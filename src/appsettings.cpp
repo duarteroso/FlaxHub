@@ -37,7 +37,7 @@ AppSettings::AppSettings(QObject *parent)
     settings.beginGroup(settingsGroup);
     m_theme = settings.value("theme", QStringLiteral("system")).toString();
     m_installDirectory = settings.value("installDirectory", InstallLayout::defaultInstallDirectory()).toString();
-    m_projectsDirectory = settings.value("projectsDirectory", QStringLiteral("~/FlaxHub/Projects")).toString();
+    m_projectsDirectory = settings.value("projectsDirectory", hubFolder() + QStringLiteral("/Projects")).toString();
     m_editorArguments = settings.value("editorArguments").toString();
 }
 

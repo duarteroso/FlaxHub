@@ -1,3 +1,4 @@
+#include "installlayout.h"
 #include "installrules.h"
 #include "pathutils.h"
 
@@ -50,6 +51,7 @@ private slots:
 
     void fullPathRefusesRelativePaths();
     void expandHomeExpandsTilde();
+    void defaultInstallDirectoryIsFullPathInHome();
 
     void freeFolderAllowsMissingAndEmptyFolders();
     void freeFolderRefusesFoldersWithContent();
@@ -177,6 +179,14 @@ void InstallRulesTest::expandHomeExpandsTilde()
 #if !defined(Q_OS_WIN)
     QCOMPARE(expandHome(QStringLiteral("~\\FlaxHub")), QStringLiteral("~\\FlaxHub"));
 #endif
+}
+
+// A fresh install takes its default folder from the home folder, so the Installs list shows it as a full path.
+void InstallRulesTest::defaultInstallDirectoryIsFullPathInHome()
+{
+    QCOMPARE(QDir::cleanPath(InstallLayout::defaultInstallDirectory()),
+             QDir::cleanPath(QDir(m_home).filePath(QStringLiteral("FlaxHub/Engines"))));
+    QVERIFY(InstallRules::isFullPath(InstallLayout::defaultInstallDirectory()));
 }
 
 void InstallRulesTest::freeFolderAllowsMissingAndEmptyFolders()

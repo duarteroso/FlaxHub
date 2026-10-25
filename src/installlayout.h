@@ -1,17 +1,20 @@
 #ifndef INSTALLLAYOUT_H
 #define INSTALLLAYOUT_H
 
+#include "pathutils.h"
+
 #include <QString>
 
 // Where an engine's build puts its files. The install runs the build with these settings and the validator checks
 // the same paths, so both read them from here.
 namespace InstallLayout {
 
-// The folder an engine goes into when an install names none. The installDirectory preference starts at it, and the UI
-// passes the preference, so this is only the fallback for a caller that gives no folder.
+// The folder an engine goes into when an install names none, as a full path so a fresh install shows it as it is. The
+// installDirectory preference starts at it, and the UI passes the preference, so this is only the fallback for a caller
+// that gives no folder.
 inline QString defaultInstallDirectory()
 {
-    return QStringLiteral("~/FlaxHub/Engines");
+    return hubFolder() + QStringLiteral("/Engines");
 }
 
 // The configuration the build step makes. The build arguments and the editor path both use it, so the editor

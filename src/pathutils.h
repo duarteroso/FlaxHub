@@ -20,4 +20,10 @@ inline QString expandHome(const QString &path)
     return path;
 }
 
+// The FlaxHub folder in the home folder, as a full path. The default folders for engines and projects are inside it.
+inline QString hubFolder()
+{
+    return QDir::homePath() + QStringLiteral("/FlaxHub");
+}
+
 #endif
