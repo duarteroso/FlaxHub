@@ -1,9 +1,11 @@
 #include "projectlistmodel.h"
 
-#include "installlistmodel.h"
+#include "engineregistry.h"
+#include "installrules.h"
 #include "pathutils.h"
+#include "projectcreator.h"
+#include "settingsarray.h"
 
-#include <QDebug>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -17,12 +19,6 @@ namespace {
 
 constexpr const char *projectsGroup = "Projects";
 
-// The editor makes a new project only in a folder that does not exist or has nothing in it.
-bool isEmptyFolder(const QString &path)
-{
-    return QFileInfo(path).isDir() && QDir(path).isEmpty(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System);
-}
-
 // The engine version a project file names. Empty when the file cannot be read, is not JSON, or names none.
 QString minEngineVersion(const QString &projectFile)
 {
@@ -33,13 +29,78 @@ QString minEngineVersion(const QString &projectFile)
     return QJsonDocument::fromJson(file.readAll()).object().value(QStringLiteral("MinEngineVersion")).toString();
 }
 
+// The absolute path with symbolic links and "." and ".." resolved, so that two spellings of one folder give one path.
+// A folder that does not exist yet is resolved through its nearest existing parent, since create() makes it.
+QString canonicalPath(const QString &path)
+{
+    const QFileInfo info(QDir::cleanPath(QFileInfo(path).absoluteFilePath()));
+    if (info.exists())
+        return info.canonicalFilePath();
+
+    const QString parent = info.absolutePath();
+    if (parent == info.absoluteFilePath())
+        return info.absoluteFilePath();
+
+    return QDir(canonicalPath(parent)).filePath(info.fileName());
+}
+
+// Whether two canonical paths name the same folder. Windows and macOS folder names ignore case by default.
+bool samePath(const QString &a, const QString &b)
+{
+#if defined(Q_OS_MACOS) || defined(Q_OS_WIN)
+    return a.compare(b, Qt::CaseInsensitive) == 0;
+#else
+    return a == b;
+#endif
+}
+
+// Splits a command line at white space outside quotes. Unlike QProcess::splitCommand, the quotes stay in the argument,
+// since the engine reads a value's quotes to find where the value ends. A quote opens only where a word or a value
+// starts, so an apostrophe inside a word, as in don't, is an ordinary character.
+QStringList splitKeepingQuotes(const QString &commandLine)
+{
+    QStringList arguments;
+    QString current;
+    QChar quote;
+    for (const QChar c : commandLine) {
+        if (quote.isNull() && c.isSpace()) {
+            if (!current.isEmpty())
+                arguments.append(current);
+            current.clear();
+            continue;
+        }
+        // A value starts after "=", as in -title="My game".
+        const bool startsValue = current.isEmpty() || current.endsWith(QLatin1Char('='));
+        if (quote.isNull() && startsValue && (c == QLatin1Char('"') || c == QLatin1Char('\'')))
+            quote = c;
+        else if (c == quote)
+            quote = QChar();
+        current += c;
+    }
+    if (!current.isEmpty())
+        arguments.append(current);
+
+    return arguments;
+}
+
 } // namespace
 
 ProjectListModel::ProjectListModel(QObject *parent)
     : QAbstractListModel(parent)
+    , m_ownedSettings(std::make_unique<QSettings>())
+    , m_settings(m_ownedSettings.get())
 {
     loadProjects();
 }
+
+ProjectListModel::ProjectListModel(QSettings *settings, QObject *parent)
+    : QAbstractListModel(parent)
+    , m_settings(settings)
+{
+    loadProjects();
+}
+
+ProjectListModel::~ProjectListModel() = default;
 
 int ProjectListModel::rowCount(const QModelIndex &parent) const
 {
@@ -106,12 +167,12 @@ QHash<int, QByteArray> ProjectListModel::roleNames() const
     };
 }
 
-InstallListModel *ProjectListModel::installs() const
+EngineRegistry *ProjectListModel::installs() const
 {
-    return m_installs;
+    return m_installs.data();
 }
 
-void ProjectListModel::setInstalls(InstallListModel *installs)
+void ProjectListModel::setInstalls(EngineRegistry *installs)
 {
     if (m_installs == installs)
         return;
@@ -121,12 +182,9 @@ void ProjectListModel::setInstalls(InstallListModel *installs)
 
     m_installs = installs;
 
-    if (m_installs) {
-        connect(m_installs, &QAbstractItemModel::dataChanged, this, &ProjectListModel::refreshInstalled);
-        connect(m_installs, &QAbstractItemModel::rowsInserted, this, &ProjectListModel::refreshInstalled);
-        connect(m_installs, &QAbstractItemModel::rowsRemoved, this, &ProjectListModel::refreshInstalled);
-        connect(m_installs, &QAbstractItemModel::modelReset, this, &ProjectListModel::refreshInstalled);
-    }
+    // Only the signal that can change which engines are installed. Log and progress lines do not emit it.
+    if (m_installs)
+        connect(m_installs, &EngineRegistry::installedEnginesChanged, this, &ProjectListModel::refreshInstalled);
 
     emit installsChanged();
     refreshInstalled();
@@ -153,40 +211,46 @@ void ProjectListModel::setPinned(const QString &path, bool pinned)
     setData(index(row), pinned, PinnedRole);
 }
 
-bool ProjectListModel::open(const QString &path)
+void ProjectListModel::open(const QString &path, const QString &editorArguments)
 {
-    for (int row = 0; row < m_projects.size(); ++row) {
-        Project &project = m_projects[row];
-        if (project.path != path)
-            continue;
-
-        const QString editor = m_installs ? m_installs->editorExecutable(project.engineVersion) : QString();
-        if (editor.isEmpty()) {
-            qWarning() << "Engine" << project.engineVersion << "is not installed, so" << path << "cannot be opened";
-            return false;
-        }
-
-        // Quoted as create() quotes it, since the engine reads a path with spaces up to the closing quote. The editor
-        // is a GUI program, so it is started detached and keeps running after the Hub closes.
-        const QString projectFile = QDir(project.path).filePath(project.name + QStringLiteral(".flaxproj"));
-        if (!QFileInfo::exists(projectFile)) {
-            qWarning() << "The project file" << projectFile << "is missing, so" << path << "cannot be opened";
-            return false;
-        }
-
-        const QStringList arguments = {QStringLiteral("-project=\"%1\"").arg(projectFile)};
-        if (!QProcess::startDetached(editor, arguments)) {
-            qWarning() << "Could not start" << editor << "for" << path;
-            return false;
-        }
-
-        project.lastOpened = QDateTime::currentDateTime();
-        emit dataChanged(index(row), index(row), {LastOpenedRole});
-        saveProjects();
-        return true;
+    const int row = rowFor(path);
+    if (row < 0) {
+        emit errorOccurred(qtTrId("main.projectlistmodel.open_title"),
+                           qtTrId("main.projectlistmodel.open_not_listed").arg(path));
+        return;
     }
 
-    return false;
+    Project &project = m_projects[row];
+    const QString editor = m_installs ? m_installs->editorExecutable(project.engineVersion) : QString();
+    if (editor.isEmpty()) {
+        emit errorOccurred(qtTrId("main.projectlistmodel.open_title"),
+                           qtTrId("main.projectlistmodel.open_engine_missing")
+                               .arg(project.engineVersion, path));
+        return;
+    }
+
+    // Quoted as create() quotes it, since the engine reads a path with spaces up to the closing quote. The editor
+    // is a GUI program, so it is started detached and keeps running after the Hub closes.
+    const QString projectFile = QDir(project.path).filePath(project.name + QStringLiteral(".flaxproj"));
+    if (!QFileInfo::exists(projectFile)) {
+        emit errorOccurred(qtTrId("main.projectlistmodel.open_title"),
+                           qtTrId("main.projectlistmodel.open_missing").arg(projectFile));
+        return;
+    }
+
+    // The saved arguments follow the project. A shell would strip their quotes, but on Linux and macOS the engine joins
+    // its arguments with spaces and reads the quotes itself (Main/MainUtil.h), so -title="My game" must keep them.
+    QStringList arguments = {QStringLiteral("-project=\"%1\"").arg(projectFile)};
+    arguments += splitKeepingQuotes(editorArguments);
+    if (!QProcess::startDetached(editor, arguments)) {
+        emit errorOccurred(qtTrId("main.projectlistmodel.open_title"),
+                           qtTrId("main.projectlistmodel.open_editor_failed").arg(path));
+        return;
+    }
+
+    project.lastOpened = QDateTime::currentDateTime();
+    emit dataChanged(index(row), index(row), {LastOpenedRole});
+    saveProjects();
 }
 
 bool ProjectListModel::creating() const
@@ -212,101 +276,93 @@ void ProjectListModel::create(const QString &folderName, const QString &location
 
     const QString name = folderName.trimmed();
     if (sanitizedName(name).isEmpty()) {
-        emit createFailed(QStringLiteral("Use at least one letter or digit in the name."));
+        emit errorOccurred(qtTrId("main.projectlistmodel.create_title"),
+                           qtTrId("main.projectlistmodel.create_name_invalid"));
         return;
     }
     if (name.contains(QLatin1Char('/')) || name.contains(QLatin1Char('\\'))) {
-        emit createFailed(QStringLiteral("The name cannot contain slashes."));
+        emit errorOccurred(qtTrId("main.projectlistmodel.create_title"),
+                           qtTrId("main.projectlistmodel.create_name_slashes"));
         return;
     }
     if (expandHome(location).isEmpty()) {
-        emit createFailed(QStringLiteral("Choose a location for the project."));
+        emit errorOccurred(qtTrId("main.projectlistmodel.create_title"),
+                           qtTrId("main.projectlistmodel.create_location_missing"));
+        return;
+    }
+    if (!InstallRules::isFullPath(expandHome(location))) {
+        emit errorOccurred(qtTrId("main.projectlistmodel.create_title"),
+                           qtTrId("main.projectlistmodel.create_location_not_full"));
         return;
     }
 
     const QString editor = m_installs ? m_installs->editorExecutable(engineVersion) : QString();
     if (editor.isEmpty()) {
-        emit createFailed(QStringLiteral("Engine %1 is not installed.").arg(engineVersion));
+        emit errorOccurred(qtTrId("main.projectlistmodel.create_title"),
+                           qtTrId("main.projectlistmodel.create_engine_missing").arg(engineVersion));
         return;
     }
 
     // The editor makes the folder itself, so the Hub only checks that the target is free.
     Project project;
     project.name = sanitizedName(name);
-    project.path = QDir(expandHome(location)).absoluteFilePath(name);
+    project.path = canonicalPath(QDir(expandHome(location)).absoluteFilePath(name));
     project.engineVersion = engineVersion;
     project.pinned = false;
-    const QString projectFile = QDir(project.path).filePath(project.name + QStringLiteral(".flaxproj"));
-    const bool existed = QFileInfo::exists(project.path);
-    if (existed && !isEmptyFolder(project.path)) {
-        emit createFailed(QStringLiteral("%1 already exists and is not empty.").arg(project.path));
+    if (rowFor(project.path) >= 0) {
+        emit errorOccurred(qtTrId("main.projectlistmodel.create_title"),
+                           qtTrId("main.projectlistmodel.already_listed").arg(project.path));
+        return;
+    }
+    if (QFileInfo::exists(project.path) && !InstallRules::isEmptyFolder(project.path)) {
+        emit errorOccurred(qtTrId("main.projectlistmodel.create_title"),
+                           qtTrId("main.projectlistmodel.create_folder_not_empty").arg(project.path));
         return;
     }
 
-    // The engine joins its arguments into one command line and does not strip quotes, so the quotes stay in the
-    // argument. The engine then reads a path with spaces up to the closing quote, as the editor does for itself.
-    const QStringList arguments = {
-        QStringLiteral("-new"),
-        QStringLiteral("-exit"),
-        QStringLiteral("-headless"),
-        QStringLiteral("-std"),
-        QStringLiteral("-project=\"%1\"").arg(project.path),
-    };
-
-    QProcess *process = new QProcess(this);
-    process->setProcessChannelMode(QProcess::MergedChannels);
-    process->setStandardInputFile(QProcess::nullDevice());
-    m_createOutput.clear();
+    const QString projectFile = QDir(project.path).filePath(project.name + QStringLiteral(".flaxproj"));
+    ProjectCreator *creator = new ProjectCreator(this);
     setCreating(true);
-
-    connect(process, &QProcess::readyReadStandardOutput, this, [this, process]() {
-        m_createOutput += process->readAllStandardOutput();
+    connect(creator, &ProjectCreator::created, this, [this, project]() {
+        finishCreate(project);
     });
-    connect(process, &QProcess::finished, this, [this, process, project, projectFile, existed](int exitCode, QProcess::ExitStatus exitStatus) {
-        m_createOutput += process->readAllStandardOutput();
-        process->deleteLater();
-
-        if (exitStatus == QProcess::CrashExit)
-            failCreate(project.path, existed, QStringLiteral("FlaxEditor crashed."));
-        else if (exitCode != 0)
-            failCreate(project.path, existed, QStringLiteral("FlaxEditor exited with code %1.").arg(exitCode));
-        else if (!QFileInfo::exists(projectFile))
-            failCreate(project.path, existed, QStringLiteral("FlaxEditor did not create %1.").arg(projectFile));
-        else
-            finishCreate(project);
+    connect(creator, &ProjectCreator::failed, this, [this](const QString &message) {
+        setCreating(false);
+        emit errorOccurred(qtTrId("main.projectlistmodel.create_title"), message);
     });
-    connect(process, &QProcess::errorOccurred, this, [this, process, project, existed](QProcess::ProcessError error) {
-        // Any other error is followed by finished, which reports it.
-        if (error != QProcess::FailedToStart)
-            return;
-
-        process->deleteLater();
-        failCreate(project.path, existed, QStringLiteral("Could not start FlaxEditor: ") + process->errorString());
-    });
-
-    process->start(editor, arguments);
+    creator->start(editor, project.path, projectFile);
 }
 
 void ProjectListModel::addExisting(const QString &folder)
 {
     if (folder.trimmed().isEmpty()) {
-        emit addFailed(QStringLiteral("Choose a folder for the project."));
+        emit errorOccurred(qtTrId("main.projectlistmodel.add_title"),
+                           qtTrId("main.projectlistmodel.add_folder_missing"));
         return;
     }
 
-    const QString path = QDir::cleanPath(QFileInfo(expandHome(folder)).absoluteFilePath());
+    if (!InstallRules::isFullPath(expandHome(folder.trimmed()))) {
+        emit errorOccurred(qtTrId("main.projectlistmodel.add_title"),
+                           qtTrId("main.projectlistmodel.add_folder_not_full"));
+        return;
+    }
+
+    const QString path = canonicalPath(expandHome(folder));
     if (!QFileInfo(path).isDir()) {
-        emit addFailed(QStringLiteral("%1 is not a folder.").arg(path));
+        emit errorOccurred(qtTrId("main.projectlistmodel.add_title"),
+                           qtTrId("main.projectlistmodel.add_not_folder").arg(path));
         return;
     }
     if (rowFor(path) >= 0) {
-        emit addFailed(QStringLiteral("%1 is already in the list.").arg(path));
+        emit errorOccurred(qtTrId("main.projectlistmodel.add_title"),
+                           qtTrId("main.projectlistmodel.already_listed").arg(path));
         return;
     }
 
-    const QStringList files = QDir(path).entryList({QStringLiteral("*.flaxproj")}, QDir::Files);
+    const QStringList files = QDir(path).entryList({QStringLiteral("*.flaxproj")}, QDir::Files, QDir::Name);
     if (files.isEmpty()) {
-        emit addFailed(QStringLiteral("No .flaxproj file found in %1.").arg(path));
+        emit errorOccurred(qtTrId("main.projectlistmodel.add_title"),
+                           qtTrId("main.projectlistmodel.add_no_project_file").arg(path));
         return;
     }
 
@@ -344,58 +400,43 @@ void ProjectListModel::finishCreate(const Project &project)
     emit created(added.path);
 }
 
-void ProjectListModel::failCreate(const QString &projectDir, bool existed, const QString &message)
-{
-    // A folder the editor made is removed again, so a retry is not blocked by it.
-    if (!existed)
-        QDir(projectDir).removeRecursively();
-
-    // The last line the editor printed usually says why it failed, so it follows the message.
-    const QStringList lines = QString::fromUtf8(m_createOutput).split(QLatin1Char('\n'), Qt::SkipEmptyParts);
-    const QString reason = lines.isEmpty() ? QString() : lines.last().trimmed();
-
-    setCreating(false);
-    emit createFailed(reason.isEmpty() ? message : message + QLatin1Char(' ') + reason);
-}
-
 // Restores the projects that the last run saved. Folders are not checked here, so a project whose folder has gone
-// stays listed, and open() warns when the user tries to open it.
+// stays listed, and open() reports it when the user tries to open it.
 void ProjectListModel::loadProjects()
 {
-    QSettings settings;
-    const int count = settings.beginReadArray(projectsGroup);
-    for (int i = 0; i < count; ++i) {
-        settings.setArrayIndex(i);
+    SettingsArray::read(*m_settings, projectsGroup, [this](QSettings &settings) {
         Project project;
         project.name = settings.value("name").toString();
         project.path = settings.value("path").toString();
         project.engineVersion = settings.value("engineVersion").toString();
         project.lastOpened = settings.value("lastOpened").toDateTime();
         project.pinned = settings.value("pinned").toBool();
-        if (project.path.isEmpty() || rowFor(project.path) >= 0)
-            continue;
+        if (project.path.isEmpty())
+            return;
+
+        // A list saved before paths were canonical may hold another spelling of a folder, which is then the same project.
+        project.path = canonicalPath(project.path);
+        if (rowFor(project.path) >= 0)
+            return;
 
         m_projects.append(project);
-    }
-    settings.endArray();
+    });
 }
 
 // Saves every project in the list, so the list comes back the same on the next run.
-void ProjectListModel::saveProjects() const
+void ProjectListModel::saveProjects()
 {
-    QSettings settings;
-    settings.remove(projectsGroup);
-    settings.beginWriteArray(projectsGroup);
-    for (int i = 0; i < m_projects.size(); ++i) {
-        const Project &project = m_projects.at(i);
-        settings.setArrayIndex(i);
+    const bool saved = SettingsArray::write(*m_settings, projectsGroup, m_projects, [](QSettings &settings, const Project &project) {
         settings.setValue("name", project.name);
         settings.setValue("path", project.path);
         settings.setValue("engineVersion", project.engineVersion);
         settings.setValue("lastOpened", project.lastOpened);
         settings.setValue("pinned", project.pinned);
+        return true;
+    });
+    if (!saved) {
+        emit errorOccurred(qtTrId("main.projectlistmodel.save_title"), qtTrId("main.projectlistmodel.save_failed"));
     }
-    settings.endArray();
 }
 
 // Puts a project at the top of the list, where the newest ones go, and saves it.
@@ -410,15 +451,23 @@ void ProjectListModel::insertProject(const Project &project)
 int ProjectListModel::rowFor(const QString &path) const
 {
     for (int row = 0; row < m_projects.size(); ++row) {
-        if (m_projects.at(row).path == path)
+        if (samePath(m_projects.at(row).path, path))
             return row;
     }
 
     return -1;
 }
 
+// Emits EngineInstalledRole for every project only when the set of installed engines has changed. The install list
+// reports each change of state, and most of them leave the set as it was.
 void ProjectListModel::refreshInstalled()
 {
+    const QStringList installed = m_installs ? m_installs->installedVersions() : QStringList();
+    const QSet<QString> installedSet(installed.cbegin(), installed.cend());
+    if (installedSet == m_installedVersions)
+        return;
+
+    m_installedVersions = installedSet;
     if (m_projects.isEmpty())
         return;
 

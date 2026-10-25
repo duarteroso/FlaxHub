@@ -18,15 +18,17 @@ ColumnLayout {
         color: Theme.text
         font.pixelSize: Theme.fontTitle
         font.bold: true
+        textFormat: Text.PlainText
     }
 
     Text {
         Layout.alignment: Qt.AlignHCenter
-        Layout.maximumWidth: 420
+        Layout.maximumWidth: Theme.readableWidth
         text: root.detail
         color: Theme.textMuted
         font.pixelSize: Theme.fontBody
         horizontalAlignment: Text.AlignHCenter
         wrapMode: Text.WordWrap
+        textFormat: Text.PlainText
     }
 }

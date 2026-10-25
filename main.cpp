@@ -1,6 +1,7 @@
 #include <QGuiApplication>
 #include <QLoggingCategory>
 #include <QQmlApplicationEngine>
+#include <QTranslator>
 
 int main(int argc, char *argv[])
 {
@@ -12,6 +13,11 @@ int main(int argc, char *argv[])
     QGuiApplication app(argc, argv);
     QGuiApplication::setOrganizationName("FlaxHub");
     QGuiApplication::setApplicationName("FlaxHub");
+
+    // Texts are looked up by id, so the English catalogue is always loaded. Without it the ids would show.
+    QTranslator translator;
+    if (translator.load(QStringLiteral(":/i18n/flaxhub_en.qm")))
+        app.installTranslator(&translator);
 
     QQmlApplicationEngine engine;
     QObject::connect(

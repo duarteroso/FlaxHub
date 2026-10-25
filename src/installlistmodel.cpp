@@ -1,155 +1,59 @@
 #include "installlistmodel.h"
 #include "installlayout.h"
-#include "installvalidator.h"
+#include "installrules.h"
+#include "installstore.h"
+#include "installtable.h"
 #include "pathutils.h"
 
-#include <QDebug>
 #include <QDir>
 #include <QFileInfo>
-#include <QFutureWatcher>
-#include <QJsonArray>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QNetworkReply>
-#include <QNetworkRequest>
-#include <QProcess>
-#include <QRegularExpression>
 #include <QSettings>
-#include <QtConcurrentRun>
-
-#include <algorithm>
 
 namespace {
 
-// GitHub returns at most 100 tags per page, so a shorter page is the last one.
-constexpr int tagsPerPage = 100;
-
-// The newest versions. The Add engine dialog lists these first and the rest under Legacy.
-constexpr int recentVersionCount = 4;
-
-// The settings group that holds the installs saved between runs.
-constexpr const char *installsGroup = "Installs";
-
-// Each platform has its own launcher for the engine's generate script in the root of the clone.
-QString generateScriptName()
-{
-#if defined(Q_OS_WIN)
-    return QStringLiteral("GenerateProjectFiles.bat");
-#elif defined(Q_OS_MACOS)
-    return QStringLiteral("GenerateProjectFiles.command");
-#else
-    return QStringLiteral("GenerateProjectFiles.sh");
-#endif
-}
-
-// Maps one of git's clone phases, at a percentage of its own, onto the clone step's bar. Receiving
-// the objects is most of the download. The last phases check the files out, and for a Git LFS
-// repository that is a large download of its own ("Filtering content").
-double cloneStepFraction(const QString &phase, int percent)
-{
-    const double share = percent / 100.0;
-    if (phase == QLatin1String("Receiving objects"))
-        return 0.8 * share;
-    if (phase == QLatin1String("Resolving deltas"))
-        return 0.8 + 0.1 * share;
-
-    return 0.9 + 0.1 * share;
-}
-
-// A failed install can be tried again, so it counts as installable.
-bool isInstallable(InstallListModel::InstallState state)
-{
-    return state == InstallListModel::Available || state == InstallListModel::Failed;
-}
-
-// A running install is cloning, generating or building.
-bool isRunning(InstallListModel::InstallState state)
-{
-    return state == InstallListModel::Cloning || state == InstallListModel::Generating
-        || state == InstallListModel::Building;
-}
-
-// Only an install whose folder was not found can be pointed at another one. Other failed checks have no
-// missing folder to locate.
-bool isRelocatable(InstallListModel::InstallState state, bool pathMissing)
-{
-    return state == InstallListModel::Invalid && pathMissing;
-}
-
 // A missing folder can be cloned into only when its parent folder exists. Otherwise Locate folder is the only way
 // to fix the install.
-bool isFixable(InstallListModel::InstallState state, bool pathMissing, const QString &path)
+bool isFixable(const InstallTable::Install &install)
 {
-    if (state != InstallListModel::Invalid)
+    if (install.state != InstallListModel::Invalid)
         return false;
 
-    return !pathMissing || QFileInfo(path).absoluteDir().exists();
-}
-
-// The path comes from the saved settings, so it is checked before anything is deleted. The folder must be
-// absolute, and it must be neither a filesystem root nor the home folder.
-bool isSafeToRemove(const QString &path)
-{
-    const QDir dir(path);
-    if (!dir.isAbsolute() || dir.isRoot())
-        return false;
-
-    return dir.canonicalPath() != QDir::home().canonicalPath();
-}
-
-// Uninstall and Fix delete a folder on a worker thread, since a cloned engine has thousands of files. A folder
-// that is already gone counts as removed.
-bool removeFolder(const QString &path)
-{
-    if (!isSafeToRemove(path))
-        return false;
-
-    return !QFileInfo::exists(path) || QDir(path).removeRecursively();
-}
-
-using Failure = InstallValidator::Failure;
-
-// A clone needs a folder that is missing or empty. A folder that is not a complete checkout is cleared first (see
-// needsClear), so a clone is needed for either.
-bool needsClone(const QList<Failure> &failures)
-{
-    return failures.contains(Failure::PathMissing) || failures.contains(Failure::NoGitCheckout);
-}
-
-// Clearing deletes the files in a folder that has some but is not a complete checkout, so Fix asks before it.
-bool needsClear(const QList<Failure> &failures)
-{
-    return failures.contains(Failure::NoGitCheckout) && !failures.contains(Failure::PathMissing)
-        && !failures.contains(Failure::FolderEmpty);
-}
-
-// Release tags are plain dotted numbers such as "1.10" or "1.8.6512.2".
-bool isVersionTag(const QString &tag)
-{
-    static const QRegularExpression pattern(QStringLiteral("^\\d+(\\.\\d+)*$"));
-    return pattern.match(tag).hasMatch();
-}
-
-// Compares part by part as numbers, so "1.10" is newer than "1.9".
-bool isNewerVersion(const QString &a, const QString &b)
-{
-    const QStringList partsA = a.split('.');
-    const QStringList partsB = b.split('.');
-    for (int i = 0; i < qMin(partsA.size(), partsB.size()); ++i) {
-        const int partA = partsA.at(i).toInt();
-        const int partB = partsB.at(i).toInt();
-        if (partA != partB)
-            return partA > partB;
-    }
-
-    return partsA.size() > partsB.size();
+    return !install.pathMissing || QFileInfo(install.path).absoluteDir().exists();
 }
 
 } // namespace
 
 InstallListModel::InstallListModel(QObject *parent)
-    : QAbstractListModel(parent)
+    : EngineRegistry(parent)
+    , m_table(std::make_unique<InstallTable>())
+    , m_ownedSettings(std::make_unique<QSettings>())
+    , m_settings(m_ownedSettings.get())
 {
+    initialize();
+}
+
+InstallListModel::InstallListModel(QSettings *settings, QObject *parent)
+    : EngineRegistry(parent)
+    , m_table(std::make_unique<InstallTable>())
+    , m_settings(settings)
+{
+    initialize();
+}
+
+InstallListModel::~InstallListModel() = default;
+
+// Connects the catalog and the steps, then restores the saved installs and starts checking their folders.
+void InstallListModel::initialize()
+{
+    connect(&m_catalog, &EngineCatalog::versionsFetched, this, &InstallListModel::finishVersionFetch);
+    connect(&m_catalog, &EngineCatalog::fetchFailed, this, [this]() {
+        setVersionFetchState(FetchFailed);
+    });
+    connect(&m_steps, &InstallSteps::logReceived, this, &InstallListModel::appendLog);
+    connect(&m_steps, &InstallSteps::progressChanged, this, &InstallListModel::setStepProgress);
+    connect(&m_steps, &InstallSteps::finished, this, &InstallListModel::finishStep);
+    connect(&m_steps, &InstallSteps::failed, this, &InstallListModel::failInstall);
+
     loadInstalls();
 }
 
@@ -158,15 +62,15 @@ int InstallListModel::rowCount(const QModelIndex &parent) const
     if (parent.isValid())
         return 0;
 
-    return m_installs.size();
+    return m_table->size();
 }
 
 QVariant InstallListModel::data(const QModelIndex &index, int role) const
 {
-    if (!index.isValid() || index.row() < 0 || index.row() >= m_installs.size())
+    if (!index.isValid() || index.row() < 0 || index.row() >= m_table->size())
         return {};
 
-    const Install &install = m_installs.at(index.row());
+    const InstallTable::Install &install = m_table->at(index.row());
     switch (role) {
     case VersionRole: return install.version;
     case ChannelRole: return install.channel;
@@ -175,13 +79,14 @@ QVariant InstallListModel::data(const QModelIndex &index, int role) const
     case PathRole: return install.path;
     case IsDefaultRole: return install.isDefault;
     case LogRole: return install.log;
-    case RecentRole: return index.row() < recentVersionCount;
+    case RecentRole: return InstallTable::isRecent(index.row());
     case StepRole: return static_cast<int>(install.step);
     case StepProgressRole: return install.stepProgress;
-    case InstallableRole: return isInstallable(install.state);
+    case InstallableRole: return m_table->canInstall(index.row());
     case ProblemRole: return install.problem;
-    case RelocatableRole: return isRelocatable(install.state, install.pathMissing);
-    case FixableRole: return isFixable(install.state, install.pathMissing, install.path);
+    case RelocatableRole: return InstallTable::isRelocatable(install);
+    case FixableRole: return isFixable(install) && InstallTable::isRecent(index.row());
+    case AddableRole: return m_table->canAdd(index.row());
     }
 
     return {};
@@ -204,554 +109,512 @@ QHash<int, QByteArray> InstallListModel::roleNames() const
         {ProblemRole, "problem"},
         {RelocatableRole, "relocatable"},
         {FixableRole, "fixable"},
+        {AddableRole, "addable"},
     };
 }
 
 bool InstallListModel::isInstalled(const QString &version) const
 {
-    const int row = rowFor(version);
-    return row >= 0 && m_installs.at(row).state == Installed;
+    return m_table->isInstalled(version);
+}
+
+QStringList InstallListModel::installedVersions() const
+{
+    return m_table->installedVersions();
 }
 
 bool InstallListModel::canInstall(const QString &version) const
 {
-    const int row = rowFor(version);
-    return row >= 0 && isInstallable(m_installs.at(row).state);
+    const int row = m_table->rowFor(version);
+    return row >= 0 && m_table->canAdd(row);
 }
 
 QString InstallListModel::editorExecutable(const QString &version) const
 {
-    const int row = rowFor(version);
-    if (row < 0 || m_installs.at(row).state != Installed)
+    if (!m_table->isInstalled(version))
         return {};
 
-    return QDir(m_installs.at(row).path).filePath(InstallLayout::editorRelativePath());
+    return QDir(m_table->at(m_table->rowFor(version)).path).filePath(InstallLayout::editorRelativePath());
 }
 
 QString InstallListModel::preferredVersion() const
 {
-    // The list is sorted newest first, so the first installed engine is the newest one.
-    int newest = -1;
-    for (int row = 0; row < m_installs.size(); ++row) {
-        const Install &install = m_installs.at(row);
-        if (install.state != Installed)
-            continue;
-        if (install.isDefault)
-            return install.version;
-        if (newest < 0)
-            newest = row;
-    }
-
-    return newest >= 0 ? m_installs.at(newest).version : QString();
+    return m_table->preferredVersion();
 }
 
-void InstallListModel::startInstall(const QString &version, const QString &path)
+bool InstallListModel::canInstallTo(const QString &path) const
 {
-    const int row = rowFor(version);
-    if (row < 0)
-        return;
+    const QString folder = expandHome(path);
+    return InstallRules::isFullPath(folder) && InstallRules::isFreeFolder(folder);
+}
 
-    Install &install = m_installs[row];
-    if (!isInstallable(install.state))
-        return;
+QString InstallListModel::installPathFor(const QString &version, const QString &destination) const
+{
+    QString folder = destination.trimmed();
+    while (folder.endsWith(QLatin1Char('/')))
+        folder.chop(1);
+    if (folder.isEmpty())
+        return {};
+
+    return folder + QLatin1Char('/') + version;
+}
+
+bool InstallListModel::startInstall(const QString &version, const QString &path)
+{
+    // An install waits for any running install to finish, so two never write into their folders at once.
+    const QString title = qtTrId("main.installlistmodel.install_title");
+    if (m_busy) {
+        emit errorOccurred(title, qtTrId("main.installlistmodel.install_busy").arg(version));
+        return false;
+    }
+
+    // A path the user gave must be a full path. The retry below ignores the path, so it is checked here as well.
+    if (!path.isEmpty() && !InstallRules::isFullPath(expandHome(path))) {
+        emit errorOccurred(title, qtTrId("main.installlistmodel.path_not_full").arg(path));
+        return false;
+    }
+
+    const int row = m_table->rowFor(version);
+    if (row < 0) {
+        emit errorOccurred(title, qtTrId("main.installlistmodel.install_unknown").arg(version));
+        return false;
+    }
+
+    const InstallTable::Install &install = m_table->at(row);
+    if (!InstallTable::isInstallable(install.state)) {
+        emit errorOccurred(title, qtTrId("main.installlistmodel.install_not_idle").arg(version));
+        return false;
+    }
+    if (!InstallTable::isRecent(row)) {
+        emit errorOccurred(title, qtTrId("main.installlistmodel.install_too_old")
+                                      .arg(InstallTable::recentVersionCount)
+                                      .arg(version));
+        return false;
+    }
 
     // A failed generate or build keeps its clone, so the retry runs that step again instead of cloning.
     // The install's path is already set, so the path argument is not needed.
     if (install.state == Failed && install.step == GenerateStep) {
         beginGenerate(version);
-        return;
+        return true;
     }
     if (install.state == Failed && install.step == BuildStep) {
         beginBuild(version);
-        return;
+        return true;
     }
 
-    install.state = Cloning;
-    install.progress = 0.0;
-    install.step = CloneStep;
-    install.stepProgress = 0.0;
-    install.path = expandHome(path.isEmpty() ? "~/FlaxHub/Engines/" + version : path);
-    install.log = "Cloning FlaxEngine " + version + "...\n";
-    install.logLineIsProgress = false;
-    emit dataChanged(index(row), index(row));
-    updateBusy();
+    const QString target = expandHome(path.isEmpty() ? installPathFor(version, InstallLayout::defaultInstallDirectory()) : path);
+    if (!InstallRules::isFullPath(target)) {
+        emit errorOccurred(title, qtTrId("main.installlistmodel.path_not_full").arg(target));
+        return false;
+    }
+    if (!InstallRules::isFreeFolder(target)) {
+        emit errorOccurred(title, qtTrId("main.installlistmodel.install_folder_not_empty").arg(target));
+        return false;
+    }
 
-    cloneRepository(version, install.path);
+    m_table->startClone(row, target);
+    notifyStateChanged(row);
+
+    // The folder is missing or empty here (see canInstallTo and needsClear).
+    m_steps.clone(version, target);
+    return true;
 }
 
 void InstallListModel::uninstall(const QString &version)
 {
-    const int row = rowFor(version);
+    const int row = m_table->rowFor(version);
     if (row < 0)
         return;
 
-    const InstallState state = m_installs.at(row).state;
-    if (state == Invalid) {
-        resetToAvailable(row);
-        saveInstalls();
-        return;
-    }
-    if (state != Installed && state != Failed)
+    const InstallState state = m_table->at(row).state;
+    if (state != Installed && state != Failed && state != Invalid)
         return;
 
-    Install &install = m_installs[row];
-    install.state = Removing;
-    install.stepProgress = -1.0;
-    emit dataChanged(index(row), index(row));
+    m_table->setRemoving(row);
+    notifyStateChanged(row);
 
-    // The worker reads only the path, so it does not touch the model.
-    const QString path = install.path;
-    auto *watcher = new QFutureWatcher<bool>(this);
-    connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher, version]() {
-        watcher->deleteLater();
-        finishUninstall(version, watcher->result());
+    const QString path = m_table->at(row).path;
+    const bool wasInvalid = state == Invalid;
+    m_jobs.removeInstall(version, path, [this, version, path, wasInvalid](const QString &problem) {
+        finishUninstall(version, path, problem, wasInvalid);
     });
-    watcher->setFuture(QtConcurrent::run([path]() {
-        return removeFolder(path);
-    }));
 }
 
 // The delete has finished. A removed folder takes its entry out of the Installs view, which is the same as
-// the entry going back to Available. A folder that could not be deleted is Invalid, so the user can see
-// the problem and remove the entry from the list.
-void InstallListModel::finishUninstall(const QString &version, bool removed)
+// the entry going back to Available. A folder that was kept is Invalid with the reason, so the user can see
+// the problem and try again. An entry that was already Invalid is dropped even when its folder was kept, since the
+// user asked to remove it from the list, and the notice says the folder stays on disk.
+void InstallListModel::finishUninstall(const QString &version, const QString &path, const QString &problem,
+                                       bool wasInvalid)
 {
-    const int row = rowFor(version);
-    if (row < 0 || m_installs.at(row).state != Removing)
+    const int row = m_table->rowFor(version);
+    if (row < 0 || m_table->at(row).state != Removing)
         return;
 
-    if (removed) {
-        resetToAvailable(row);
+    if (problem.isEmpty()) {
+        m_table->resetToAvailable(row);
+        notifyStateChanged(row);
+    } else if (wasInvalid) {
+        m_table->resetToAvailable(row);
+        notifyStateChanged(row);
+        emit errorOccurred(qtTrId("main.installlistmodel.removed_title"),
+                           qtTrId("main.installlistmodel.removed")
+                               .arg(version, path, problem));
     } else {
-        Install &install = m_installs[row];
-        install.state = Invalid;
-        install.problem = QStringLiteral("Could not delete the folder");
-        emit dataChanged(index(row), index(row));
+        m_table->setKept(row, problem);
+        notifyStateChanged(row);
     }
-    saveInstalls();
 }
 
-// Clears an install back to Available, as if it had never been installed. The version stays in the list,
-// so it can be installed again.
-void InstallListModel::resetToAvailable(int row)
-{
-    Install &install = m_installs[row];
-    install.state = Available;
-    install.progress = 0.0;
-    install.step = CloneStep;
-    install.stepProgress = 0.0;
-    install.path.clear();
-    install.isDefault = false;
-    install.log.clear();
-    install.problem.clear();
-    install.pathMissing = false;
-    emit dataChanged(index(row), index(row));
-}
-
-// The folder the user located is checked the same way as at startup. An install that passes is Installed
-// again, and one that fails stays Invalid with the reason for the new folder.
+// Only a folder that FlaxHub created can be located: it must hold the marker that the clone wrote. Any other folder is
+// refused before a check runs, and the install keeps its old folder. The folder that passes is checked the same way as
+// at startup, on a worker thread. An install that passes is Installed again, and one that fails stays Invalid with the
+// reason for the new folder. A marked folder that is not a checkout of this engine is refused too, since Fix would clear it.
 void InstallListModel::relocate(const QString &version, const QString &path)
 {
-    const int row = rowFor(version);
+    const int row = m_table->rowFor(version);
+    if (row < 0 || !InstallTable::isRelocatable(m_table->at(row)))
+        return;
+
+    const QString folder = expandHome(path);
+    if (!InstallRules::isFullPath(folder)) {
+        emit errorOccurred(qtTrId("main.installlistmodel.locate_title"),
+                           qtTrId("main.installlistmodel.path_not_full").arg(path));
+        return;
+    }
+
+    if (!InstallRules::hasMarker(folder)) {
+        emit errorOccurred(qtTrId("main.installlistmodel.locate_title"),
+                           qtTrId("main.installlistmodel.locate_not_created_by_hub")
+                               .arg(version)
+                               .arg(folder));
+        return;
+    }
+
+    m_table->setChecking(row);
+    notifyStateChanged(row);
+
+    m_jobs.check(version, folder, [this, version, folder](const QList<Failure> &failures) {
+        const int checked = m_table->rowFor(version);
+        if (checked < 0)
+            return;
+
+        if (InstallRules::needsClear(failures)) {
+            m_table->refuseLocation(checked, failures);
+            notifyStateChanged(checked);
+            emit errorOccurred(qtTrId("main.installlistmodel.locate_title"),
+                               qtTrId("main.installlistmodel.locate_incomplete")
+                                   .arg(version));
+            return;
+        }
+
+        m_table->relocate(checked, folder, failures);
+        notifyStateChanged(checked);
+    });
+}
+
+// All four checks run again, on a worker thread, since the folder may have changed since it was last checked. The
+// install is Checking until decideFix has the result.
+void InstallListModel::fix(const QString &version, bool clearConfirmed)
+{
+    const int row = m_table->rowFor(version);
+    if (row < 0 || m_table->at(row).state != Invalid)
+        return;
+
+    // A Fix may clone and build, which installs the engine, so it is held to the same rule as an install.
+    if (!InstallTable::isRecent(row)) {
+        emit errorOccurred(qtTrId("main.installlistmodel.fix_title"),
+                           qtTrId("main.installlistmodel.fix_too_old")
+                               .arg(InstallTable::recentVersionCount)
+                               .arg(version));
+        return;
+    }
+
+    // Fix waits for any other install to finish, so two installs never write into their folders at once.
+    if (m_busy) {
+        emit errorOccurred(qtTrId("main.installlistmodel.fix_title"),
+                           qtTrId("main.installlistmodel.fix_busy").arg(version));
+        return;
+    }
+
+    m_table->setChecking(row);
+    notifyStateChanged(row);
+
+    m_jobs.check(version, m_table->at(row).path, [this, version, clearConfirmed](const QList<Failure> &failures) {
+        decideFix(version, failures, clearConfirmed);
+    });
+}
+
+// Decides what a Fix does with the result of its check. Only the steps that the failed checks need run, in order:
+// clone, generate, build. The install becomes Installed only when finishInstall passes. A folder that has files but is
+// not a complete checkout is cleared only when clearConfirmed is set.
+void InstallListModel::decideFix(const QString &version, const QList<Failure> &failures, bool clearConfirmed)
+{
+    const int row = m_table->rowFor(version);
     if (row < 0)
         return;
 
-    Install &install = m_installs[row];
-    if (!isRelocatable(install.state, install.pathMissing))
-        return;
-
-    const QList<Failure> failures = InstallValidator::validate(path, version);
-    install.path = path;
-    install.state = failures.isEmpty() ? Installed : Invalid;
-    install.pathMissing = failures.contains(Failure::PathMissing);
-    install.problem = InstallValidator::describe(failures);
-    emit dataChanged(index(row), index(row));
-    saveInstalls();
-}
-
-// Whether Fix would clear the folder. The check runs now, so the view can ask the user before fix deletes anything.
-bool InstallListModel::fixClearsFolder(const QString &version) const
-{
-    const int row = rowFor(version);
-    if (row < 0 || m_installs.at(row).state != Invalid)
-        return false;
-
-    const Install &install = m_installs.at(row);
-    return needsClear(InstallValidator::validate(install.path, version));
-}
-
-// All four checks run again, since the folder may have changed since startup. Then only the steps that the failed
-// checks need run, in order: clone, generate, build. The install becomes Installed only when finishInstall passes.
-// A folder that has files but is not a complete checkout is cleared only when clearConfirmed is set.
-bool InstallListModel::fix(const QString &version, bool clearConfirmed)
-{
-    const int row = rowFor(version);
-    // Fix waits for any other install to finish, so two installs never write into their folders at once.
-    if (row < 0 || m_installs.at(row).state != Invalid || m_busy)
-        return false;
-
-    Install &install = m_installs[row];
-    const QList<Failure> failures = InstallValidator::validate(install.path, version);
-    install.pathMissing = failures.contains(Failure::PathMissing);
-    install.problem = InstallValidator::describe(failures);
-    install.state = failures.isEmpty() ? Installed : Invalid;
-    emit dataChanged(index(row), index(row));
-
+    m_table->applyCheckResult(row, failures);
+    const InstallTable::Install &install = m_table->at(row);
     if (failures.isEmpty()) {
-        saveInstalls();
-        return false;
+        notifyStateChanged(row);
+        return;
     }
 
-    // Nothing is changed when the fix is not allowed, and the problem text above shows the current reasons.
-    if (!isFixable(install.state, install.pathMissing, install.path) || (needsClear(failures) && !clearConfirmed))
-        return false;
+    // Another install may have started while the check ran. Its steps write into their folders, so this one waits.
+    if (m_busy) {
+        notifyStateChanged(row);
+        emit errorOccurred(qtTrId("main.installlistmodel.fix_title"),
+                           qtTrId("main.installlistmodel.fix_busy").arg(version));
+        return;
+    }
 
-    // The log starts with the reasons, so the run shows what it is repairing.
-    install.log = QStringLiteral("Fixing FlaxEngine %1...\n").arg(version) + install.problem + QLatin1Char('\n');
-    install.logLineIsProgress = false;
+    // Git could not run, and no step repairs that. The install stays as it is, and the problem text says why.
+    if (failures.contains(Failure::GitUnavailable)) {
+        notifyStateChanged(row);
+        emit errorOccurred(qtTrId("main.installlistmodel.fix_title"),
+                           qtTrId("main.installlistmodel.fix_no_git")
+                               .arg(version));
+        return;
+    }
 
-    if (!needsClone(failures)) {
+    // Nothing is changed when the fix is not allowed, and the problem text shows the current reasons.
+    if (!isFixable(install)) {
+        notifyStateChanged(row);
+        emit errorOccurred(qtTrId("main.installlistmodel.fix_title"),
+                           qtTrId("main.installlistmodel.fix_no_parent")
+                               .arg(install.path));
+        return;
+    }
+
+    // The view asks the user, then calls fix again with the clear confirmed.
+    if (InstallRules::needsClear(failures) && !clearConfirmed) {
+        notifyStateChanged(row);
+        emit clearConfirmationRequired(version, install.path);
+        return;
+    }
+
+    m_table->startFix(row);
+
+    if (!InstallRules::needsClone(failures)) {
         if (failures.contains(Failure::NoGenerateOutput))
             beginGenerate(version);
         else
             beginBuild(version);
-        return true;
+        emit fixStarted(version, m_table->at(row).path);
+        return;
     }
 
     const QString path = install.path;
-    const bool clear = needsClear(failures);
-    if (clear)
-        install.log += QStringLiteral("Clearing the folder...\n");
-    install.state = Cloning;
-    install.step = CloneStep;
-    install.progress = 0.0;
-    // Clearing reports no fraction, so the bar is indeterminate until the clone reports one.
-    install.stepProgress = clear ? -1.0 : 0.0;
-    emit dataChanged(index(row), index(row));
-    updateBusy();
+    const bool clear = InstallRules::needsClear(failures);
+    m_table->startFixClone(row, clear);
+    notifyStateChanged(row);
+    emit fixStarted(version, path);
 
     if (!clear) {
-        cloneRepository(version, path);
-        return true;
+        m_steps.clone(version, path);
+        return;
     }
 
-    // Clearing runs on the worker thread, as uninstall does. The clone starts once the folder is gone.
-    auto *watcher = new QFutureWatcher<bool>(this);
-    connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher, version, path]() {
-        watcher->deleteLater();
-        if (watcher->result())
-            cloneRepository(version, path);
+    // The clone starts once the folder is gone.
+    m_jobs.clear(path, [this, version, path](bool cleared) {
+        if (cleared)
+            m_steps.clone(version, path);
         else
             failInstall(version, QStringLiteral("Could not clear the folder"));
     });
-    watcher->setFuture(QtConcurrent::run([path]() {
-        return removeFolder(path);
-    }));
-    return true;
 }
 
 void InstallListModel::setDefault(const QString &version)
 {
-    const int target = rowFor(version);
-    if (target < 0 || m_installs.at(target).state != Installed)
+    const int target = m_table->rowFor(version);
+    if (target < 0 || m_table->at(target).state != Installed)
         return;
 
-    bool changed = false;
-    for (int row = 0; row < m_installs.size(); ++row) {
-        Install &install = m_installs[row];
-        const bool isDefault = row == target;
-        if (install.isDefault != isDefault) {
-            install.isDefault = isDefault;
-            changed = true;
-            emit dataChanged(index(row), index(row), {IsDefaultRole});
-        }
-    }
+    const QList<int> changed = m_table->setDefault(target);
+    for (const int row : changed)
+        emit dataChanged(index(row), index(row), {IsDefaultRole});
 
-    if (changed)
+    if (!changed.isEmpty())
         saveInstalls();
 }
 
-int InstallListModel::rowFor(const QString &version) const
-{
-    for (int row = 0; row < m_installs.size(); ++row) {
-        if (m_installs.at(row).version == version)
-            return row;
-    }
-
-    return -1;
-}
-
-// Restores the installs that the last run saved. Each folder is checked again, since it may have been
-// moved or deleted. A folder that fails the check stays in the list as Invalid, so the user can see it.
+// Restores the installs that the last run saved. Each folder is checked again, since it may have been moved or
+// deleted. An install that was running when the app quit is checked the same way, since its folder may be partly
+// written, and a folder that fails the check stays in the list as Invalid, so the user can see it. Until its check
+// returns, an install is Checking.
 void InstallListModel::loadInstalls()
 {
-    QSettings settings;
-    const int count = settings.beginReadArray(installsGroup);
-    for (int i = 0; i < count; ++i) {
-        settings.setArrayIndex(i);
-        const QString version = settings.value("version").toString();
-        const QString path = settings.value("path").toString();
-        if (version.isEmpty() || path.isEmpty() || rowFor(version) >= 0)
-            continue;
+    for (const InstallStore::SavedInstall &saved : InstallStore::load(*m_settings))
+        m_table->addSaved(saved.version, saved.path, saved.isDefault);
+    m_table->sortNewestFirst();
 
-        Install install{version, "Stable", Installed, 1.0, path, settings.value("isDefault").toBool(), {}, BuildStep, -1.0};
-        const QList<Failure> failures = InstallValidator::validate(path, version);
-        if (!failures.isEmpty()) {
-            install.state = Invalid;
-            install.problem = InstallValidator::describe(failures);
-            install.pathMissing = failures.contains(Failure::PathMissing);
-        }
-        m_installs.append(install);
+    for (const InstallTable::Install &install : m_table->installs()) {
+        m_jobs.check(install.version, install.path, [this, version = install.version](const QList<Failure> &failures) {
+            const int row = m_table->rowFor(version);
+            if (row < 0)
+                return;
+
+            m_table->applyCheckResult(row, failures);
+            notifyStateChanged(row);
+        });
     }
-    settings.endArray();
-
-    std::sort(m_installs.begin(), m_installs.end(), [](const Install &a, const Install &b) {
-        return isNewerVersion(a.version, b.version);
-    });
 }
 
-// Saves the installs that are on disk, or that were and may be again. Running and failed installs are
-// left out, because they have no finished folder to return to. A removal in progress is kept, so a save
-// during it does not drop the entry. If the app quits mid-delete, the entry is checked again on the next run.
-void InstallListModel::saveInstalls() const
+// A running install, a failed one, a removal and a check are saved too, so a folder the Hub may have written into is
+// never left without its entry. Each state change saves (see notifyStateChanged), so the entry is on disk before a
+// step starts. If the app quits mid-step, mid-delete or mid-check, the entry is checked again on the next run.
+void InstallListModel::saveInstalls()
 {
-    QSettings settings;
-    settings.remove(installsGroup);
-    settings.beginWriteArray(installsGroup);
-    int saved = 0;
-    for (const Install &install : m_installs) {
-        if (install.state != Installed && install.state != Invalid && install.state != Removing)
-            continue;
+    const bool saved = InstallStore::save(*m_settings, m_table->installs());
 
-        settings.setArrayIndex(saved++);
-        settings.setValue("version", install.version);
-        settings.setValue("path", install.path);
-        settings.setValue("isDefault", install.isDefault);
+    // Each state change saves, so the notice is shown once per failure and not on every change after it.
+    const bool failed = !saved;
+    if (failed && !m_saveFailed) {
+        emit errorOccurred(qtTrId("main.installlistmodel.save_title"),
+                           qtTrId("main.installlistmodel.save_failed"));
     }
-    settings.endArray();
+    m_saveFailed = failed;
 }
 
-// Clones the release tag into path. --depth 1 fetches only that tagged commit, not the history.
-void InstallListModel::cloneRepository(const QString &version, const QString &path)
+// Saves the installs, tells the views that a row's state changed, and keeps busy() in step. Log and progress lines do
+// not come through here, so they are not taken for a change of state.
+void InstallListModel::notifyStateChanged(int row)
 {
-    const QStringList arguments = {"clone", "--progress", "--depth", "1", "--branch", version,
-                                   "https://github.com/FlaxEngine/FlaxEngine.git", path};
-    runStep(version, "git", arguments, {}, [this, version]() {
-        finishClone(version);
-    });
+    saveInstalls();
+    emit dataChanged(index(row), index(row));
+    updateBusy();
+    emit installStateChanged();
+    emit installedEnginesChanged();
 }
 
-// Runs one step's program and adds its output to the install's log, which also updates the step's bar.
-// A zero exit calls onSuccess. Any other exit, or a program that will not start, fails the install.
-void InstallListModel::runStep(const QString &version, const QString &program, const QStringList &arguments,
-                               const QString &workingDirectory, const std::function<void()> &onSuccess)
+// Emits busyChanged only when the set of running installs goes from none to some, or back.
+void InstallListModel::updateBusy()
 {
-    QProcess *process = new QProcess(this);
-    process->setProcessChannelMode(QProcess::MergedChannels);
-    process->setStandardInputFile(QProcess::nullDevice());
-    if (!workingDirectory.isEmpty())
-        process->setWorkingDirectory(workingDirectory);
+    const bool running = m_table->anyRunning();
+    if (m_busy == running)
+        return;
 
-    // Without this, git waits on the terminal for credentials when it cannot read the repository.
-    QProcessEnvironment environment = QProcessEnvironment::systemEnvironment();
-    environment.insert(QStringLiteral("GIT_TERMINAL_PROMPT"), QStringLiteral("0"));
-    process->setProcessEnvironment(environment);
-
-    const QString name = QFileInfo(program).fileName();
-    connect(process, &QProcess::readyReadStandardOutput, this, [this, process, version]() {
-        appendOutput(version, process->readAllStandardOutput());
-    });
-    connect(process, &QProcess::finished, this, [this, process, version, name, onSuccess](int exitCode, QProcess::ExitStatus exitStatus) {
-        appendOutput(version, process->readAllStandardOutput());
-        process->deleteLater();
-
-        if (exitStatus == QProcess::NormalExit && exitCode == 0)
-            onSuccess();
-        else
-            failInstall(version, QStringLiteral("%1 exited with code %2").arg(name).arg(exitCode));
-    });
-    connect(process, &QProcess::errorOccurred, this, [this, process, version, name](QProcess::ProcessError error) {
-        if (error != QProcess::FailedToStart)
-            return;
-
-        failInstall(version, QStringLiteral("Could not start %1: ").arg(name) + process->errorString());
-        process->deleteLater();
-    });
-
-    process->start(program, arguments);
+    m_busy = running;
+    emit busyChanged();
 }
 
-// Adds a step's output to the log. Git redraws its progress line with a carriage return, so that line
-// is replaced by whatever comes after it instead of becoming a new line.
-void InstallListModel::appendOutput(const QString &version, const QByteArray &output)
+void InstallListModel::appendLog(const QString &version, const QString &text)
 {
-    const int row = rowFor(version);
+    const int row = m_table->rowFor(version);
     if (row < 0)
         return;
 
-    Install &install = m_installs[row];
-    const QString text = QString::fromUtf8(output);
-    for (const QChar c : text) {
-        if (c == '\r') {
-            install.logLineIsProgress = true;
-            continue;
-        }
-        if (install.logLineIsProgress && c != '\n')
-            install.log.truncate(install.log.lastIndexOf('\n') + 1);
-        install.logLineIsProgress = false;
-        install.log.append(c);
-    }
-
-    // Only git's clone reports a percentage for the step's bar. The generate script reports none.
-    if (install.state == Cloning) {
-        // The last progress line in this output is the most recent one.
-        static const QRegularExpression progressPattern(
-            QStringLiteral("(Receiving objects|Resolving deltas|Filtering content|Updating files):\\s+(\\d+)%"));
-        QRegularExpressionMatchIterator matches = progressPattern.globalMatch(text);
-        while (matches.hasNext()) {
-            const QRegularExpressionMatch match = matches.next();
-            install.stepProgress = cloneStepFraction(match.captured(1), match.captured(2).toInt());
-        }
-
-        // The clone is the first of the three steps, so it fills the first third of the install's progress.
-        install.progress = install.stepProgress / 3.0;
-    }
-    emit dataChanged(index(row), index(row));
+    m_table->appendOutput(row, text);
+    emit dataChanged(index(row), index(row), {LogRole});
 }
 
-// The clone is done, so the generate step starts.
+// Sets the clone step's bar from git's progress. Only the clone reports a fraction, so other steps ignore it.
+void InstallListModel::setStepProgress(const QString &version, double fraction)
+{
+    const int row = m_table->rowFor(version);
+    if (row < 0 || !m_table->setCloneProgress(row, fraction))
+        return;
+
+    emit dataChanged(index(row), index(row), {ProgressRole, StepProgressRole});
+}
+
+// The step exited with 0, so the install moves on from the step that ran.
+void InstallListModel::finishStep(const QString &version)
+{
+    const int row = m_table->rowFor(version);
+    if (row < 0)
+        return;
+
+    switch (m_table->at(row).state) {
+    case Cloning: finishClone(version); break;
+    case Generating: finishGenerate(version); break;
+    // The build tool exited with 0, so the install's checks run.
+    case Building: finishInstall(version); break;
+    default: break;
+    }
+}
+
+// The clone is done, so the marker goes into the folder and the generate step starts. The marker waits for the clone,
+// since git refuses a folder that already holds files.
 void InstallListModel::finishClone(const QString &version)
 {
-    const int row = rowFor(version);
-    if (row < 0 || m_installs.at(row).state != Cloning)
+    const int row = m_table->rowFor(version);
+    if (row < 0 || m_table->at(row).state != Cloning)
         return;
+
+    const QString path = m_table->at(row).path;
+    if (!InstallRules::writeMarker(path)) {
+        failInstall(version, QStringLiteral("Could not write the install marker in %1").arg(path));
+        return;
+    }
 
     beginGenerate(version);
 }
 
-// Runs the engine's generate script in the cloned folder. The log keeps what came before, so a retry shows
-// the clone's output as well.
 void InstallListModel::beginGenerate(const QString &version)
 {
-    const int row = rowFor(version);
-    Install &install = m_installs[row];
-    install.state = Generating;
-    install.step = GenerateStep;
-    install.progress = 1.0 / 3.0;
-    install.stepProgress = -1.0;
-    if (install.logLineIsProgress)
-        install.log += '\n';
-    install.logLineIsProgress = false;
-    install.log += "Generating project files...\n";
-    emit dataChanged(index(row), index(row));
-    updateBusy();
+    const int row = m_table->rowFor(version);
+    m_table->startGenerate(row);
+    notifyStateChanged(row);
 
-    const QString script = QDir(install.path).filePath(generateScriptName());
-    runStep(version, script, {}, install.path, [this, version]() {
-        finishGenerate(version);
-    });
+    m_steps.generate(version, m_table->at(row).path);
 }
 
 // The generate script has finished. The build step starts unless the editor is already there, which only a
 // Fix that regenerated the project files can find. A fresh clone never has it, so its build always runs.
 void InstallListModel::finishGenerate(const QString &version)
 {
-    const int row = rowFor(version);
-    if (row < 0 || m_installs.at(row).state != Generating)
+    const int row = m_table->rowFor(version);
+    if (row < 0 || m_table->at(row).state != Generating)
         return;
 
-    if (InstallValidator::validate(m_installs.at(row).path, version).contains(Failure::NoBinary))
+    if (!InstallValidator::hasReleaseEditor(m_table->at(row).path))
         beginBuild(version);
     else
         finishInstall(version);
 }
 
-// Runs the engine's build tool for the editor in the Release configuration. The generate step only builds the
-// C# bindings, so this is the step that compiles FlaxEditor. The tool reports no fraction, so the bar is
-// indeterminate.
 void InstallListModel::beginBuild(const QString &version)
 {
-    const int row = rowFor(version);
-    Install &install = m_installs[row];
-    install.state = Building;
-    install.step = BuildStep;
-    install.progress = 2.0 / 3.0;
-    install.stepProgress = -1.0;
-    if (install.logLineIsProgress)
-        install.log += '\n';
-    install.logLineIsProgress = false;
-    install.log += "Building...\n";
-    emit dataChanged(index(row), index(row));
-    updateBusy();
+    const int row = m_table->rowFor(version);
+    m_table->startBuild(row);
+    notifyStateChanged(row);
 
-    // Without -log the tool writes its output to a log file only, so there would be nothing for runStep to show.
-    const QStringList arguments = {
-        QStringLiteral("-build"),
-        QStringLiteral("-log"),
-        QStringLiteral("-platform=%1").arg(InstallLayout::buildPlatform()),
-        QStringLiteral("-arch=%1").arg(InstallLayout::buildArchitecture()),
-        QStringLiteral("-configuration=%1").arg(InstallLayout::buildConfiguration()),
-        QStringLiteral("-buildtargets=FlaxEditor"),
-    };
-    const QString tool = QDir(install.path).filePath(InstallLayout::buildToolRelativePath());
-    runStep(version, tool, arguments, install.path, [this, version]() {
-        finishBuild(version);
-    });
+    m_steps.build(version, m_table->at(row).path);
 }
 
-// The build tool exited with 0, so the install's checks run.
-void InstallListModel::finishBuild(const QString &version)
-{
-    const int row = rowFor(version);
-    if (row < 0 || m_installs.at(row).state != Building)
-        return;
-
-    finishInstall(version);
-}
-
-// The steps are done, so every check runs once more. The install is Installed only when they all pass, so an
-// install is never kept without its editor. Otherwise it is Invalid with the reasons, and Fix can run again.
+// The steps are done, so the folder is checked once more on a worker thread. The install is Installed only when every
+// check passes, so an install is never kept without its editor. Otherwise it is Invalid with the reasons, and Fix can
+// run again.
 void InstallListModel::finishInstall(const QString &version)
 {
-    const int row = rowFor(version);
+    const int row = m_table->rowFor(version);
     if (row < 0)
         return;
 
-    Install &install = m_installs[row];
-    const QList<Failure> failures = InstallValidator::validate(install.path, version);
-    install.pathMissing = failures.contains(Failure::PathMissing);
-    install.problem = InstallValidator::describe(failures);
-    install.progress = 1.0;
-    if (install.logLineIsProgress)
-        install.log += '\n';
-    install.logLineIsProgress = false;
-    if (failures.isEmpty()) {
-        install.state = Installed;
-        install.log += "Done.\n";
-    } else {
-        install.state = Invalid;
-        install.log += "The install did not pass its checks:\n" + install.problem + '\n';
-    }
-    emit dataChanged(index(row), index(row));
-    saveInstalls();
-    updateBusy();
+    m_table->finishSteps(row);
+    notifyStateChanged(row);
+
+    m_jobs.check(version, m_table->at(row).path, [this, version](const QList<Failure> &failures) {
+        const int checked = m_table->rowFor(version);
+        if (checked < 0)
+            return;
+
+        m_table->applyInstallCheck(checked, failures);
+        notifyStateChanged(checked);
+    });
 }
 
 // Stops a running install on the step it is on. The log keeps the reason.
 void InstallListModel::failInstall(const QString &version, const QString &message)
 {
-    const int row = rowFor(version);
-    if (row < 0 || !isRunning(m_installs.at(row).state))
+    const int row = m_table->rowFor(version);
+    if (row < 0 || !m_table->fail(row, message))
         return;
 
-    Install &install = m_installs[row];
-    install.state = Failed;
-    if (install.logLineIsProgress)
-        install.log += '\n';
-    install.logLineIsProgress = false;
-    install.log += message + '\n';
-    emit dataChanged(index(row), index(row));
-    updateBusy();
+    notifyStateChanged(row);
 }
 
 InstallListModel::VersionFetchState InstallListModel::versionFetchState() const
@@ -764,18 +627,14 @@ bool InstallListModel::busy() const
     return m_busy;
 }
 
-// Emits busyChanged only when the set of running installs goes from none to some, or back.
-void InstallListModel::updateBusy()
+bool InstallListModel::removing() const
 {
-    bool busy = false;
-    for (const Install &install : m_installs)
-        busy = busy || isRunning(install.state);
+    return m_table->anyRemoving();
+}
 
-    if (m_busy == busy)
-        return;
-
-    m_busy = busy;
-    emit busyChanged();
+bool InstallListModel::checking() const
+{
+    return m_jobs.checking();
 }
 
 void InstallListModel::fetchAvailableVersions()
@@ -784,7 +643,7 @@ void InstallListModel::fetchAvailableVersions()
         return;
 
     setVersionFetchState(Fetching);
-    requestTagPage(1, {});
+    m_catalog.fetch();
 }
 
 void InstallListModel::setVersionFetchState(VersionFetchState state)
@@ -796,77 +655,26 @@ void InstallListModel::setVersionFetchState(VersionFetchState state)
     emit versionFetchStateChanged();
 }
 
-// Tags are paged, so each page is requested in turn until a short one arrives.
-void InstallListModel::requestTagPage(int page, const QStringList &tags)
+// The catalog has the newest-first version tags. Each one goes in at its place in that order, so the restored installs
+// keep their place among the fetched ones.
+void InstallListModel::finishVersionFetch(const QStringList &versions)
 {
-    const QString url = QStringLiteral("https://api.github.com/repos/FlaxEngine/FlaxEngine/tags?per_page=%1&page=%2")
-                            .arg(tagsPerPage)
-                            .arg(page);
-    QNetworkRequest request{QUrl(url)};
-    // GitHub rejects API requests that have no User-Agent.
-    request.setRawHeader("User-Agent", "FlaxHub");
-    request.setRawHeader("Accept", "application/vnd.github+json");
-    request.setTransferTimeout(15000);
-
-    QNetworkReply *reply = m_network.get(request);
-    connect(reply, &QNetworkReply::finished, this, [this, reply, page, tags]() {
-        reply->deleteLater();
-
-        if (reply->error() != QNetworkReply::NoError) {
-            qWarning() << "Could not fetch engine versions:" << reply->errorString();
-            setVersionFetchState(FetchFailed);
-            return;
-        }
-
-        const QJsonDocument document = QJsonDocument::fromJson(reply->readAll());
-        if (!document.isArray()) {
-            qWarning() << "Could not read engine versions: GitHub did not return a tag list";
-            setVersionFetchState(FetchFailed);
-            return;
-        }
-
-        const QJsonArray pageTags = document.array();
-        QStringList allTags = tags;
-        for (const QJsonValue &tag : pageTags)
-            allTags.append(tag.toObject().value("name").toString());
-
-        if (pageTags.size() < tagsPerPage)
-            finishVersionFetch(allTags);
-        else
-            requestTagPage(page + 1, allTags);
-    });
-}
-
-void InstallListModel::finishVersionFetch(const QStringList &tags)
-{
-    QStringList versions;
-    for (const QString &tag : tags) {
-        if (isVersionTag(tag))
-            versions.append(tag);
-    }
-    std::sort(versions.begin(), versions.end(), isNewerVersion);
-
-    // Each version goes in at its place in the newest-first order, so the restored installs keep their
-    // place among the fetched ones.
     bool inserted = false;
     for (const QString &version : versions) {
-        if (rowFor(version) >= 0)
+        const int row = m_table->availableRow(version);
+        if (row < 0)
             continue;
 
-        const auto position = std::find_if(m_installs.cbegin(), m_installs.cend(), [&version](const Install &install) {
-            return isNewerVersion(version, install.version);
-        });
-        const int row = static_cast<int>(position - m_installs.cbegin());
         beginInsertRows(QModelIndex(), row, row);
-        m_installs.insert(row, Install{version, "Stable", Available, 0.0, {}, false, {}, CloneStep, 0.0});
+        m_table->insertAvailable(row, version);
         endInsertRows();
         inserted = true;
     }
 
-    // Inserting moves the rows below, so which rows are among the newest can change. The Add dialog
-    // filters on that flag, so it has to be told.
+    // Inserting moves the rows below, so which rows are among the newest can change, and with them which can be
+    // installed or fixed. The Add dialog and the views filter on those roles, so they have to be told.
     if (inserted)
-        emit dataChanged(index(0), index(m_installs.size() - 1), {RecentRole});
+        emit dataChanged(index(0), index(m_table->size() - 1), {RecentRole, InstallableRole, FixableRole});
 
     setVersionFetchState(Fetched);
 }

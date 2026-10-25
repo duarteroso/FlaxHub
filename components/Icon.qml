@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Effects
 import QtQuick.Window
@@ -12,8 +14,8 @@ Item {
     property url source
     property color color: Theme.text
 
-    implicitWidth: 20
-    implicitHeight: 20
+    implicitWidth: Theme.iconSize
+    implicitHeight: Theme.iconSize
 
     Image {
         anchors.fill: parent

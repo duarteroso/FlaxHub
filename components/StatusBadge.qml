@@ -10,7 +10,8 @@ Rectangle {
     implicitWidth: label.implicitWidth + Theme.spaceM * 2
     implicitHeight: label.implicitHeight + Theme.spaceXs * 2
     radius: height / 2
-    color: Qt.alpha(tone, 0.15)
+    // A faint tint keeps the text at 4.5:1 or more on every background a badge sits on.
+    color: Qt.alpha(tone, 0.09)
 
     Text {
         id: label

@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls.Basic
@@ -10,7 +12,8 @@ Rectangle {
 
     required property ProjectListModel projects
     required property InstallListModel installs
-    required property var prefs
+    required property var installedEngines
+    required property AppSettings prefs
 
     signal installRequested(string version)
     signal newProjectRequested()
@@ -20,19 +23,22 @@ Rectangle {
     // Both groups count, so the empty state shows only when no project is listed.
     readonly property int projectCount: pinnedRows.count + otherRows.count
 
-    function escapeRegExp(text) {
-        return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // The project whose pin button takes the focus once its row reappears in the other group.
+    property string pinFocusPath: ""
+
+    // Scrolls the list just far enough to show the item.
+    function scrollIntoView(item) {
+        const top = item.mapToItem(list.contentItem, 0, 0).y;
+        const bottom = top + item.height;
+        if (top < list.contentY)
+            list.contentY = top;
+        else if (bottom > list.contentY + list.height)
+            list.contentY = bottom - list.height;
     }
 
-    // Only installed engines can be picked for a project.
-    SortFilterProxyModel {
-        id: installedEngines
-
-        sourceModel: root.installs
-        filters: ValueFilter {
-            roleName: "state"
-            value: InstallListModel.Installed
-        }
+    // Starts the project's editor. A failure is reported through the models' errorOccurred, which the window shows.
+    function openProject(path) {
+        root.projects.open(path, root.prefs.editorArguments);
     }
 
     // Searched and sorted once. The two groups below split it by pin, so both follow the search and the sort without
@@ -41,9 +47,12 @@ Rectangle {
         id: visibleProjects
 
         sourceModel: root.projects
-        filters: RegExpFilter {
-            roleName: "name"
-            regExp: new RegExp(root.escapeRegExp(searchField.text), "i")
+        filters: FunctionFilter {
+            property string needle: searchField.text.toLowerCase()
+            onNeedleChanged: invalidate()
+            function filter(name: string): bool {
+                return name.toLowerCase().includes(needle);
+            }
         }
         sorters: [
             RoleSorter {
@@ -51,8 +60,9 @@ Rectangle {
                 sortOrder: Qt.DescendingOrder
                 enabled: sortBox.currentIndex === 0
             },
-            RoleSorter {
+            StringSorter {
                 roleName: "name"
+                caseSensitivity: Qt.CaseInsensitive
                 enabled: sortBox.currentIndex === 1
             }
         ]
@@ -81,7 +91,7 @@ Rectangle {
     FolderDialog {
         id: addFolderDialog
 
-        title: qsTr("Add existing project")
+        title: qsTrId("main.projectsview.add_existing_title")
         onAccepted: {
             const folder = FileManager.toLocalPath(selectedFolder);
             if (folder !== "")
@@ -89,91 +99,106 @@ Rectangle {
         }
     }
 
-    NoticeDialog {
-        id: addNoticeDialog
-    }
-
-    Connections {
-        target: root.projects
-
-        function onAddFailed(message) {
-            addNoticeDialog.show(qsTr("Could not add project"), message);
-        }
-    }
-
     // One project row. The pinned group and the other projects both show it.
     Component {
         id: projectRow
 
-        Rectangle {
+        HubCard {
             id: row
 
-            // Copied out of `model` so nested controls can use them: ComboBox has its own `model` property.
-            readonly property string projectPath: model.path
-            readonly property string engineVersion: model.engineVersion
-            readonly property bool engineInstalled: model.engineInstalled
+            // The project's roles. `model` is also declared, because setData goes through it: the nested ComboBox
+            // has a `model` property of its own.
+            required property var model
+            required property string name
+            required property string path
+            required property string engineVersion
+            required property bool engineInstalled
+            required property bool pinned
+
+            readonly property string pinLabel: row.pinned ? qsTrId("main.projectsview.unpin") : qsTrId("main.projectsview.pin")
 
             function setEngineVersion(version) {
-                model.engineVersion = version;
+                row.model.engineVersion = version;
             }
 
             width: list.width
-            implicitHeight: content.implicitHeight + Theme.spaceM * 2
-            radius: Theme.radius
-            color: Theme.surface
-            border.width: 1
-            border.color: Theme.border
+
+            Component.onCompleted: {
+                if (root.pinFocusPath !== "" && row.path === root.pinFocusPath) {
+                    root.pinFocusPath = "";
+                    pinButton.forceActiveFocus();
+                }
+            }
 
             RowLayout {
-                id: content
-
-                anchors.fill: parent
-                anchors.margins: Theme.spaceM
+                Layout.fillWidth: true
                 spacing: Theme.spaceM
 
                 ToolButton {
+                    id: pinButton
+
+                    hoverEnabled: true
                     contentItem: Icon {
-                        source: model.pinned ? Qt.resolvedUrl("../icons/star_filled.svg") : Qt.resolvedUrl("../icons/star.svg")
-                        color: model.pinned ? Theme.accent : Theme.text
+                        source: row.pinned ? Qt.resolvedUrl("../icons/star_filled.svg") : Qt.resolvedUrl("../icons/star.svg")
+                        color: row.pinned ? Theme.accent : Theme.text
                     }
+                    Accessible.name: row.pinLabel
+                    ToolTip.visible: pinButton.hovered
+                    ToolTip.text: row.pinLabel
                     onClicked: {
                         // Deferred: pinning moves the row to the other group, which destroys this delegate.
-                        const path = row.projectPath;
-                        const pinned = !model.pinned;
+                        const path = row.path;
+                        const pinned = !row.pinned;
+                        if (pinButton.activeFocus)
+                            root.pinFocusPath = path;
                         Qt.callLater(() => root.projects.setPinned(path, pinned));
                     }
                 }
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    spacing: 2
+                    spacing: Theme.spaceXxs
 
                     Text {
                         Layout.fillWidth: true
-                        text: model.name
+                        text: row.name
                         color: Theme.text
-                        font.pixelSize: Theme.fontBody + 2
+                        font.pixelSize: Theme.fontSubtitle
                         font.bold: true
                         elide: Text.ElideRight
+                        textFormat: Text.PlainText
                     }
 
                     Text {
                         Layout.fillWidth: true
-                        text: row.projectPath
+                        text: row.path
                         color: Theme.textMuted
                         font.pixelSize: Theme.fontSmall
                         elide: Text.ElideMiddle
+                        textFormat: Text.PlainText
                     }
                 }
 
                 // The picker always shows the project's own version, even when that engine is not installed.
                 ComboBox {
-                    id: picker
-
-                    model: installedEngines
+                    // The project's own engine is left out, so the list only offers other versions.
+                    model: SortFilterProxyModel {
+                        sourceModel: root.installedEngines
+                        filters: ValueFilter {
+                            roleName: "version"
+                            value: row.engineVersion
+                            inverted: true
+                        }
+                    }
                     textRole: "version"
-                    currentIndex: -1
-                    Layout.preferredWidth: 120
+                    valueRole: "version"
+                    Accessible.name: qsTrId("main.projectsview.engine_version_of").arg(row.name)
+                    // The project's own engine is left out of the list, so the index stays -1. The count is read so the index is
+                    // set again once the engines are listed, and a pick replaces this binding, so onActivated restores it.
+                    currentIndex: count > 0 ? indexOfValue(row.engineVersion) : -1
+                    // Nothing to switch to when the project's engine is the only one installed.
+                    enabled: count > 0
+                    Layout.preferredWidth: Theme.comboWidth
 
                     contentItem: Text {
                         leftPadding: Theme.spaceS
@@ -184,51 +209,43 @@ Rectangle {
                         elide: Text.ElideRight
                     }
 
-                    onActivated: (index) => row.setEngineVersion(textAt(index))
+                    onActivated: (index) => {
+                        row.setEngineVersion(textAt(index));
+                        currentIndex = Qt.binding(() => indexOfValue(row.engineVersion));
+                    }
                 }
 
                 StatusBadge {
                     visible: !row.engineInstalled
-                    text: qsTr("Not installed")
+                    text: qsTrId("main.projectsview.not_installed")
                     tone: Theme.warning
                 }
 
                 HubButton {
                     visible: !row.engineInstalled
-                    text: qsTr("Install…")
+                    text: qsTrId("main.projectsview.install")
                     onClicked: root.installRequested(row.engineVersion)
                 }
 
                 HubButton {
-                    text: qsTr("Open")
+                    text: qsTrId("main.projectsview.open")
                     primary: true
                     enabled: row.engineInstalled
-                    onClicked: root.projects.open(row.projectPath)
+                    onClicked: root.openProject(row.path)
                 }
 
-                ToolButton {
-                    text: "⋮"
-                    onClicked: rowMenu.popup()
+                RowMenuButton {
+                    MenuItem {
+                        text: FileManager.revealLabel
+                        onTriggered: FileManager.reveal(row.path)
+                    }
 
-                    Menu {
-                        id: rowMenu
-
-                        // Popups don't reliably follow palette changes, so a menu can keep the theme it was created in.
-                        // Following the button's palette keeps it in step with the theme.
-                        palette: parent.palette
-
-                        MenuItem {
-                            text: FileManager.revealLabel
-                            onTriggered: FileManager.reveal(row.projectPath)
-                        }
-
-                        MenuItem {
-                            text: qsTr("Remove from list")
-                            onTriggered: {
-                                // Deferred so the delegate that owns this menu is not destroyed mid-handler.
-                                const path = row.projectPath;
-                                Qt.callLater(() => root.projects.remove(path));
-                            }
+                    MenuItem {
+                        text: qsTrId("main.projectsview.remove_from_list")
+                        onTriggered: {
+                            // Deferred so the delegate that owns this menu is not destroyed mid-handler.
+                            const path = row.path;
+                            Qt.callLater(() => root.projects.remove(path));
                         }
                     }
                 }
@@ -243,10 +260,10 @@ Rectangle {
 
         ViewHeader {
             Layout.fillWidth: true
-            title: qsTr("Projects")
+            title: qsTrId("main.projectsview.title")
 
             HubButton {
-                text: qsTr("Add existing")
+                text: qsTrId("main.projectsview.add_existing")
                 onClicked: {
                     addFolderDialog.currentFolder = FileManager.folderUrl(root.prefs.projectsDirectory);
                     addFolderDialog.open();
@@ -254,7 +271,7 @@ Rectangle {
             }
 
             HubButton {
-                text: qsTr("New project")
+                text: qsTrId("main.projectsview.new_project")
                 primary: true
                 onClicked: root.newProjectRequested()
             }
@@ -264,17 +281,18 @@ Rectangle {
             Layout.fillWidth: true
             spacing: Theme.spaceS
 
-            SearchField {
+            HubSearchField {
                 id: searchField
 
                 Layout.fillWidth: true
-                placeholderText: qsTr("Search projects")
+                placeholderText: qsTrId("main.projectsview.search_placeholder")
             }
 
             ComboBox {
                 id: sortBox
 
-                model: [qsTr("Last opened"), qsTr("Name")]
+                model: [qsTrId("main.projectsview.sort_last_opened"), qsTrId("main.projectsview.sort_name")]
+                Accessible.name: qsTrId("main.projectsview.sort_label")
             }
         }
 
@@ -290,6 +308,19 @@ Rectangle {
             contentHeight: groups.height
 
             ScrollBar.vertical: ScrollBar {}
+
+            Connections {
+                target: list.Window.window
+
+                function onActiveFocusItemChanged() {
+                    let item = list.Window.window.activeFocusItem;
+                    const focused = item;
+                    while (item && item !== list.contentItem)
+                        item = item.parent;
+                    if (item)
+                        root.scrollIntoView(focused);
+                }
+            }
 
             ColumnLayout {
                 id: groups
@@ -331,11 +362,11 @@ Rectangle {
             EmptyState {
                 anchors.centerIn: parent
                 title: searchField.text.length > 0
-                       ? qsTr("No projects match \"%1\"").arg(searchField.text)
-                       : qsTr("No projects yet")
+                       ? qsTrId("main.projectsview.empty_search_title").arg(searchField.text)
+                       : qsTrId("main.projectsview.empty_title")
                 detail: searchField.text.length > 0
-                        ? qsTr("Try a different search.")
-                        : qsTr("Create a new project or add one from disk.")
+                        ? qsTrId("main.projectsview.empty_search_detail")
+                        : qsTrId("main.projectsview.empty_detail")
             }
         }
     }

@@ -10,10 +10,13 @@ AbstractButton {
     property bool current: false
     property bool collapsed: false
 
-    implicitHeight: 40
+    implicitHeight: Theme.controlHeight
     padding: Theme.spaceS
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
+    // Collapsed, the button shows only its icon, so the tooltip names it. Its text is still its accessible name.
+    ToolTip.visible: root.hovered && root.collapsed
+    ToolTip.text: root.text
 
     contentItem: RowLayout {
         spacing: Theme.spaceM
@@ -47,7 +50,7 @@ AbstractButton {
         color: root.current ? Theme.surface
              : root.hovered ? Theme.surfaceHover
              : "transparent"
-        border.width: root.visualFocus ? 2 : 0
+        border.width: root.visualFocus ? Theme.focusRingWidth : 0
         border.color: Theme.accent
     }
 }

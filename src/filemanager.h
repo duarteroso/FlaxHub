@@ -30,6 +30,10 @@ public:
     // The URL a folder picker should open at for path. A "~" is expanded, and a missing path falls back to the
     // nearest existing folder, or to the home folder when none exists.
     Q_INVOKABLE QUrl folderUrl(const QString &path) const;
+
+signals:
+    // reveal() failed. Main.qml shows it.
+    void errorOccurred(const QString &title, const QString &message);
 };
 
 #endif

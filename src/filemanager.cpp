@@ -38,11 +38,11 @@ FileManager::FileManager(QObject *parent)
 QString FileManager::revealLabel() const
 {
 #if defined(Q_OS_MACOS)
-    return tr("Show in Finder");
+    return qtTrId("main.filemanager.reveal_finder");
 #elif defined(Q_OS_WIN)
-    return tr("Show in File Explorer");
+    return qtTrId("main.filemanager.reveal_explorer");
 #else
-    return tr("Show in folder");
+    return qtTrId("main.filemanager.reveal_default");
 #endif
 }
 
@@ -50,18 +50,23 @@ bool FileManager::reveal(const QString &path)
 {
     if (path.isEmpty()) {
         qWarning() << "Cannot show an empty path in the file manager";
+        emit errorOccurred(qtTrId("main.filemanager.cannot_show_title"), qtTrId("main.filemanager.no_folder"));
         return false;
     }
 
     const QString folder = folderToShow(path);
     if (folder.isEmpty()) {
         qWarning() << "No existing folder to show for" << path;
+        emit errorOccurred(qtTrId("main.filemanager.cannot_show_title"),
+                           qtTrId("main.filemanager.no_folder_exists").arg(path));
         return false;
     }
 
     // Qt hands the folder to Finder, Explorer or the desktop's file manager, whichever the platform uses.
     if (!QDesktopServices::openUrl(QUrl::fromLocalFile(folder))) {
         qWarning() << "Could not open" << folder << "in the file manager";
+        emit errorOccurred(qtTrId("main.filemanager.cannot_show_title"),
+                           qtTrId("main.filemanager.open_failed").arg(folder));
         return false;
     }
 

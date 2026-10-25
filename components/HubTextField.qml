@@ -2,10 +2,11 @@ import QtQuick
 import QtQuick.Controls.Basic
 import FlaxHub
 
+// A single-line field in the hub's style: a surface with a border that turns to the accent while it has focus.
 TextField {
     id: root
 
-    implicitHeight: 36
+    implicitHeight: Theme.controlHeight
     leftPadding: Theme.spaceM
     rightPadding: Theme.spaceM
     color: Theme.text

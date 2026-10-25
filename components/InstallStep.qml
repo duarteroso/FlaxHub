@@ -1,10 +1,10 @@
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Controls.Basic
 import FlaxHub
 
 // One step of an install. The marker shows its status. A running step shows a bar under its label,
-// indeterminate while the step cannot report progress, and an optional detail line under that.
+// indeterminate while the step cannot report progress, and an optional detail line under that. A failed
+// step shows its detail too, in the danger colour and wrapped, since the reason can be longer than a line.
 ColumnLayout {
     id: root
 
@@ -42,7 +42,7 @@ ColumnLayout {
         Text {
             id: markerText
 
-            Layout.preferredWidth: 16
+            Layout.preferredWidth: Theme.markerWidth
             horizontalAlignment: Text.AlignHCenter
             text: root.marker
             color: root.tone
@@ -60,28 +60,26 @@ ColumnLayout {
         }
     }
 
-    ProgressBar {
-        // The style fills the bar with palette.dark and draws the track with palette.midlight. Both are set on the bar
-        // only, because palette.dark also outlines popups and palette.midlight is the pressed-item color.
-        palette.dark: Theme.accent
-        palette.midlight: Theme.border
+    HubProgressBar {
         visible: root.status === "running"
         Layout.fillWidth: true
         Layout.leftMargin: markerText.width + Theme.spaceS
-        from: 0
-        to: 1
         indeterminate: root.progress < 0
         value: root.progress
+        Accessible.name: qsTrId("main.installstep.progress_of").arg(label.text)
     }
 
     Text {
         id: detailText
 
-        visible: root.status === "running" && text !== ""
+        visible: (root.status === "running" || root.status === "failed") && text !== ""
         Layout.fillWidth: true
         Layout.leftMargin: markerText.width + Theme.spaceS
-        color: Theme.textMuted
+        color: root.status === "failed" ? Theme.danger : Theme.textMuted
         font.pixelSize: Theme.fontSmall
-        elide: Text.ElideRight
+        wrapMode: root.status === "failed" ? Text.Wrap : Text.NoWrap
+        elide: root.status === "failed" ? Text.ElideNone : Text.ElideRight
+        // The detail is the last lines of program output, which are plain text.
+        textFormat: Text.PlainText
     }
 }

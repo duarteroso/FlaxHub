@@ -7,6 +7,13 @@
 // the same paths, so both read them from here.
 namespace InstallLayout {
 
+// The folder an engine goes into when an install names none. The installDirectory preference starts at it, and the UI
+// passes the preference, so this is only the fallback for a caller that gives no folder.
+inline QString defaultInstallDirectory()
+{
+    return QStringLiteral("~/FlaxHub/Engines");
+}
+
 // The configuration the build step makes. The build arguments and the editor path both use it, so the editor
 // the build writes is the one the install checks for.
 inline QString buildConfiguration()
@@ -30,7 +37,7 @@ inline QString buildPlatform()
 // editorDirectoryRelativePath), so the build has to target arm64 too or the install would never find its editor.
 inline QString buildArchitecture()
 {
-#if defined(Q_OS_WIN) && defined(Q_PROCESSOR_ARM_64)
+#if defined(Q_PROCESSOR_ARM_64)
     return QStringLiteral("arm64");
 #else
     return QStringLiteral("x64");
@@ -71,6 +78,18 @@ inline QString editorRelativePath()
     return editorDirectoryRelativePath() + QStringLiteral("/FlaxEditor.exe");
 #else
     return editorDirectoryRelativePath() + QStringLiteral("/FlaxEditor");
+#endif
+}
+
+// The launcher for the engine's generate script in the root of the clone. Each platform has its own.
+inline QString generateScriptName()
+{
+#if defined(Q_OS_WIN)
+    return QStringLiteral("GenerateProjectFiles.bat");
+#elif defined(Q_OS_MACOS)
+    return QStringLiteral("GenerateProjectFiles.command");
+#else
+    return QStringLiteral("GenerateProjectFiles.sh");
 #endif
 }
 

@@ -6,7 +6,7 @@ import FlaxHub
 Rectangle {
     id: root
 
-    required property var prefs
+    required property AppSettings prefs
 
     color: Theme.windowBg
 
@@ -17,42 +17,30 @@ Rectangle {
 
         ViewHeader {
             Layout.fillWidth: true
-            title: qsTr("Settings")
+            title: qsTrId("main.settingsview.title")
         }
 
-        Text {
-            Layout.topMargin: Theme.spaceS
-            text: qsTr("Appearance")
-            color: Theme.textMuted
-            font.pixelSize: Theme.fontSmall
-            font.bold: true
+        SectionLabel {
+            text: qsTrId("main.settingsview.appearance")
         }
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: Theme.spaceM
-
-            Text {
-                Layout.preferredWidth: 200
-                text: qsTr("Theme")
-                color: Theme.text
-                font.pixelSize: Theme.fontBody
-            }
+        SettingsRow {
+            label: qsTrId("main.settingsview.theme")
 
             RadioButton {
-                text: qsTr("System")
+                text: qsTrId("main.settingsview.theme_system")
                 checked: root.prefs.theme === "system"
                 onClicked: root.prefs.theme = "system"
             }
 
             RadioButton {
-                text: qsTr("Light")
+                text: qsTrId("main.settingsview.theme_light")
                 checked: root.prefs.theme === "light"
                 onClicked: root.prefs.theme = "light"
             }
 
             RadioButton {
-                text: qsTr("Dark")
+                text: qsTrId("main.settingsview.theme_dark")
                 checked: root.prefs.theme === "dark"
                 onClicked: root.prefs.theme = "dark"
             }
@@ -62,97 +50,80 @@ Rectangle {
             }
         }
 
-        Text {
-            Layout.topMargin: Theme.spaceS
-            text: qsTr("Locations")
-            color: Theme.textMuted
-            font.pixelSize: Theme.fontSmall
-            font.bold: true
+        SectionLabel {
+            text: qsTrId("main.settingsview.locations")
         }
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: Theme.spaceM
+        SettingsRow {
+            id: installsRow
 
-            Text {
-                Layout.preferredWidth: 200
-                text: qsTr("Engine installs folder")
-                color: Theme.text
-                font.pixelSize: Theme.fontBody
-            }
+            label: qsTrId("main.settingsview.install_folder")
 
             FolderField {
                 Layout.fillWidth: true
+                label: installsRow.label
                 path: root.prefs.installDirectory
-                dialogTitle: qsTr("Choose engine installs folder")
+                dialogTitle: qsTrId("main.settingsview.install_folder_dialog_title")
                 onChosen: folder => root.prefs.installDirectory = folder
             }
         }
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: Theme.spaceM
+        SettingsRow {
+            id: projectsRow
 
-            Text {
-                Layout.preferredWidth: 200
-                text: qsTr("Projects folder")
-                color: Theme.text
-                font.pixelSize: Theme.fontBody
-            }
+            label: qsTrId("main.settingsview.projects_folder")
 
             FolderField {
                 Layout.fillWidth: true
+                label: projectsRow.label
                 path: root.prefs.projectsDirectory
-                dialogTitle: qsTr("Choose projects folder")
+                dialogTitle: qsTrId("main.settingsview.projects_folder_dialog_title")
                 onChosen: folder => root.prefs.projectsDirectory = folder
             }
         }
 
-        Text {
-            Layout.topMargin: Theme.spaceS
-            text: qsTr("Editor")
-            color: Theme.textMuted
-            font.pixelSize: Theme.fontSmall
-            font.bold: true
+        SectionLabel {
+            text: qsTrId("main.settingsview.editor")
         }
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: Theme.spaceM
+        SettingsRow {
+            id: argumentsRow
 
-            Row {
-                Layout.preferredWidth: 200
-                spacing: Theme.spaceXs
+            label: qsTrId("main.settingsview.launch_arguments")
 
-                Text {
-                    text: qsTr("Extra launch arguments")
-                    color: Theme.text
+            // A link to the editor's command-line documentation. It is a button, so the keyboard can reach it.
+            labelExtras: AbstractButton {
+                id: docsLink
+
+                text: "↗"
+                padding: 0
+                hoverEnabled: true
+                focusPolicy: Qt.StrongFocus
+                Accessible.name: qsTrId("main.settingsview.command_line_docs")
+                ToolTip.visible: docsLink.hovered || docsLink.visualFocus
+                ToolTip.text: qsTrId("main.settingsview.command_line_docs")
+                onClicked: Qt.openUrlExternally("https://docs.flaxengine.com/manual/editor/advanced/command-line-access.html")
+
+                contentItem: Text {
+                    text: docsLink.text
+                    color: docsLink.hovered || docsLink.visualFocus ? Theme.accent : Theme.textMuted
                     font.pixelSize: Theme.fontBody
                 }
 
-                Text {
-                    text: "↗"
-                    color: docsMouse.containsMouse ? Theme.accent : Theme.textMuted
-                    font.pixelSize: Theme.fontBody
-                    ToolTip.visible: docsMouse.containsMouse
-                    ToolTip.text: qsTr("Command-line access documentation")
-
-                    MouseArea {
-                        id: docsMouse
-
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: Qt.openUrlExternally("https://docs.flaxengine.com/manual/editor/advanced/command-line-access.html")
-                    }
+                background: Rectangle {
+                    radius: Theme.radiusSmall
+                    color: "transparent"
+                    border.width: docsLink.visualFocus ? Theme.focusRingWidth : 0
+                    border.color: Theme.accent
                 }
             }
 
-            TextField {
+            HubTextField {
                 Layout.fillWidth: true
+                Accessible.name: argumentsRow.label
                 text: root.prefs.editorArguments
-                placeholderText: qsTr("For example: -debug")
-                onEditingFinished: root.prefs.editorArguments = text
+                placeholderText: qsTrId("main.settingsview.launch_arguments_placeholder")
+                onTextEdited: root.prefs.editorArguments = text
             }
         }
 
