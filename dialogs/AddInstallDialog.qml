@@ -29,7 +29,7 @@ HubDialog {
         }
     }
 
-    // The destination as chosen, once typing ends or Browse picks a folder.
+    // The destination. It starts at the saved install folder and changes only when Browse picks another folder.
     property string destination: ""
     // The destination without spaces around it. Empty when nothing is chosen.
     readonly property string destinationPath: root.destination.trim()

@@ -8,7 +8,7 @@
 
 // Opens folders in the platform's file manager. A path to a file opens the folder that holds it, so a saved
 // path never launches the file itself. Also converts between the paths the settings save and the URLs that
-// folder pickers use.
+// folder pickers use, and copies a path to the clipboard.
 class FileManager : public QObject
 {
     Q_OBJECT
@@ -30,6 +30,9 @@ public:
     // The URL a folder picker should open at for path. A "~" is expanded, and a missing path falls back to the
     // nearest existing folder, or to the home folder when none exists.
     Q_INVOKABLE QUrl folderUrl(const QString &path) const;
+
+    // Puts path on the clipboard so it can be pasted elsewhere.
+    Q_INVOKABLE void copyPath(const QString &path) const;
 
 signals:
     // reveal() failed. Main.qml shows it.

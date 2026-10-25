@@ -8,8 +8,18 @@
         <source></source>
         <translation>Cancel</translation>
     </message>
+    <message id="main.folderfield.copied">
+        <location filename="../components/FolderField.qml" line="28"/>
+        <source></source>
+        <translation>Path copied</translation>
+    </message>
+    <message id="main.folderfield.copy_hint">
+        <location filename="../components/FolderField.qml" line="28"/>
+        <source></source>
+        <translation>Click to copy the path</translation>
+    </message>
     <message id="main.folderfield.browse">
-        <location filename="../components/FolderField.qml" line="38"/>
+        <location filename="../components/FolderField.qml" line="53"/>
         <source></source>
         <translation>Browse…</translation>
     </message>
@@ -117,38 +127,38 @@
         <translation>Install</translation>
     </message>
     <message id="main.installprogressdialog.step_clone">
-        <location filename="../dialogs/InstallProgressDialog.qml" line="19"/>
+        <location filename="../dialogs/InstallProgressDialog.qml" line="20"/>
         <source></source>
         <translation>Clone repository</translation>
     </message>
     <message id="main.installprogressdialog.step_generate">
-        <location filename="../dialogs/InstallProgressDialog.qml" line="19"/>
+        <location filename="../dialogs/InstallProgressDialog.qml" line="21"/>
         <source></source>
         <translation>Generate project files</translation>
     </message>
     <message id="main.installprogressdialog.step_build">
-        <location filename="../dialogs/InstallProgressDialog.qml" line="19"/>
+        <location filename="../dialogs/InstallProgressDialog.qml" line="22"/>
         <source></source>
         <translation>Build editor</translation>
     </message>
     <message id="main.installprogressdialog.title">
-        <location filename="../dialogs/InstallProgressDialog.qml" line="84"/>
+        <location filename="../dialogs/InstallProgressDialog.qml" line="88"/>
         <source></source>
         <translation>Installing engine</translation>
     </message>
     <message id="main.installprogressdialog.engine_name">
-        <location filename="../dialogs/InstallProgressDialog.qml" line="93"/>
+        <location filename="../dialogs/InstallProgressDialog.qml" line="97"/>
         <source></source>
         <translation>FlaxEngine %1</translation>
     </message>
     <message id="main.installprogressdialog.checks_failed">
-        <location filename="../dialogs/InstallProgressDialog.qml" line="157"/>
+        <location filename="../dialogs/InstallProgressDialog.qml" line="161"/>
         <source></source>
         <translation>The install did not pass its checks:
 %1</translation>
     </message>
     <message id="main.installprogressdialog.close">
-        <location filename="../dialogs/InstallProgressDialog.qml" line="171"/>
+        <location filename="../dialogs/InstallProgressDialog.qml" line="175"/>
         <source></source>
         <translation>Close</translation>
     </message>
@@ -587,64 +597,64 @@
         <translation>Engine installs folder</translation>
     </message>
     <message id="main.appsettings.install_folder_not_full_path">
-        <location filename="../src/appsettings.cpp" line="70"/>
+        <location filename="../src/appsettings.cpp" line="71"/>
         <source></source>
         <translation>Enter a full path, such as ~/FlaxHub/Engines. The folder was not changed.</translation>
     </message>
     <message id="main.appsettings.projects_folder_title">
-        <location filename="../src/appsettings.cpp" line="90"/>
+        <location filename="../src/appsettings.cpp" line="91"/>
         <source></source>
         <translation>Projects folder</translation>
     </message>
     <message id="main.appsettings.projects_folder_not_full_path">
-        <location filename="../src/appsettings.cpp" line="90"/>
+        <location filename="../src/appsettings.cpp" line="92"/>
         <source></source>
         <translation>Enter a full path, such as ~/FlaxHub/Projects. The folder was not changed.</translation>
     </message>
     <message id="main.appsettings.not_saved_title">
-        <location filename="../src/appsettings.cpp" line="117"/>
+        <location filename="../src/appsettings.cpp" line="119"/>
         <source></source>
         <translation>Settings not saved</translation>
     </message>
     <message id="main.appsettings.not_saved">
-        <location filename="../src/appsettings.cpp" line="117"/>
+        <location filename="../src/appsettings.cpp" line="119"/>
         <source></source>
         <translation>The setting could not be written to the settings file. It applies until the Hub closes.</translation>
     </message>
     <message id="main.filemanager.reveal_finder">
-        <location filename="../src/filemanager.cpp" line="41"/>
+        <location filename="../src/filemanager.cpp" line="43"/>
         <source></source>
         <translation>Show in Finder</translation>
     </message>
     <message id="main.filemanager.reveal_explorer">
-        <location filename="../src/filemanager.cpp" line="43"/>
+        <location filename="../src/filemanager.cpp" line="45"/>
         <source></source>
         <translation>Show in File Explorer</translation>
     </message>
     <message id="main.filemanager.reveal_default">
-        <location filename="../src/filemanager.cpp" line="45"/>
+        <location filename="../src/filemanager.cpp" line="47"/>
         <source></source>
         <translation>Show in folder</translation>
     </message>
     <message id="main.filemanager.cannot_show_title">
-        <location filename="../src/filemanager.cpp" line="53"/>
-        <location filename="../src/filemanager.cpp" line="60"/>
-        <location filename="../src/filemanager.cpp" line="67"/>
+        <location filename="../src/filemanager.cpp" line="55"/>
+        <location filename="../src/filemanager.cpp" line="62"/>
+        <location filename="../src/filemanager.cpp" line="70"/>
         <source></source>
         <translation>Cannot show folder</translation>
     </message>
     <message id="main.filemanager.no_folder">
-        <location filename="../src/filemanager.cpp" line="53"/>
+        <location filename="../src/filemanager.cpp" line="55"/>
         <source></source>
         <translation>There is no folder to show.</translation>
     </message>
     <message id="main.filemanager.no_folder_exists">
-        <location filename="../src/filemanager.cpp" line="60"/>
+        <location filename="../src/filemanager.cpp" line="63"/>
         <source></source>
         <translation>No folder exists at %1, or above it.</translation>
     </message>
     <message id="main.filemanager.open_failed">
-        <location filename="../src/filemanager.cpp" line="67"/>
+        <location filename="../src/filemanager.cpp" line="71"/>
         <source></source>
         <translation>The file manager could not open %1.</translation>
     </message>
@@ -754,116 +764,116 @@
     </message>
     <message id="main.projectlistmodel.open_title">
         <location filename="../src/projectlistmodel.cpp" line="218"/>
-        <location filename="../src/projectlistmodel.cpp" line="225"/>
-        <location filename="../src/projectlistmodel.cpp" line="235"/>
-        <location filename="../src/projectlistmodel.cpp" line="245"/>
+        <location filename="../src/projectlistmodel.cpp" line="226"/>
+        <location filename="../src/projectlistmodel.cpp" line="236"/>
+        <location filename="../src/projectlistmodel.cpp" line="246"/>
         <source></source>
         <translation>Could not open project</translation>
     </message>
     <message id="main.projectlistmodel.open_not_listed">
-        <location filename="../src/projectlistmodel.cpp" line="218"/>
+        <location filename="../src/projectlistmodel.cpp" line="219"/>
         <source></source>
         <translation>%1 is not in the project list.</translation>
     </message>
     <message id="main.projectlistmodel.open_engine_missing">
-        <location filename="../src/projectlistmodel.cpp" line="226"/>
+        <location filename="../src/projectlistmodel.cpp" line="227"/>
         <source></source>
         <translation>Engine %1 is not installed, so %2 cannot be opened. Install the engine, or choose another one for the project.</translation>
     </message>
     <message id="main.projectlistmodel.open_missing">
-        <location filename="../src/projectlistmodel.cpp" line="236"/>
+        <location filename="../src/projectlistmodel.cpp" line="237"/>
         <source></source>
         <translation>%1 is missing. Its folder or .flaxproj file may have been moved or deleted.</translation>
     </message>
     <message id="main.projectlistmodel.open_editor_failed">
-        <location filename="../src/projectlistmodel.cpp" line="245"/>
+        <location filename="../src/projectlistmodel.cpp" line="247"/>
         <source></source>
         <translation>The editor for %1 did not start.</translation>
     </message>
     <message id="main.projectlistmodel.create_title">
-        <location filename="../src/projectlistmodel.cpp" line="277"/>
-        <location filename="../src/projectlistmodel.cpp" line="281"/>
-        <location filename="../src/projectlistmodel.cpp" line="285"/>
+        <location filename="../src/projectlistmodel.cpp" line="279"/>
+        <location filename="../src/projectlistmodel.cpp" line="284"/>
         <location filename="../src/projectlistmodel.cpp" line="289"/>
-        <location filename="../src/projectlistmodel.cpp" line="295"/>
-        <location filename="../src/projectlistmodel.cpp" line="306"/>
-        <location filename="../src/projectlistmodel.cpp" line="310"/>
-        <location filename="../src/projectlistmodel.cpp" line="322"/>
+        <location filename="../src/projectlistmodel.cpp" line="294"/>
+        <location filename="../src/projectlistmodel.cpp" line="301"/>
+        <location filename="../src/projectlistmodel.cpp" line="313"/>
+        <location filename="../src/projectlistmodel.cpp" line="318"/>
+        <location filename="../src/projectlistmodel.cpp" line="331"/>
         <source></source>
         <translation>Could not create project</translation>
     </message>
     <message id="main.projectlistmodel.create_name_invalid">
-        <location filename="../src/projectlistmodel.cpp" line="277"/>
+        <location filename="../src/projectlistmodel.cpp" line="280"/>
         <source></source>
         <translation>Use at least one letter or digit in the name.</translation>
     </message>
     <message id="main.projectlistmodel.create_name_slashes">
-        <location filename="../src/projectlistmodel.cpp" line="281"/>
+        <location filename="../src/projectlistmodel.cpp" line="285"/>
         <source></source>
         <translation>The name cannot contain slashes.</translation>
     </message>
     <message id="main.projectlistmodel.create_location_missing">
-        <location filename="../src/projectlistmodel.cpp" line="285"/>
+        <location filename="../src/projectlistmodel.cpp" line="290"/>
         <source></source>
         <translation>Choose a location for the project.</translation>
     </message>
     <message id="main.projectlistmodel.create_location_not_full">
-        <location filename="../src/projectlistmodel.cpp" line="289"/>
+        <location filename="../src/projectlistmodel.cpp" line="295"/>
         <source></source>
         <translation>The location must be a full path, such as /home/you/Projects.</translation>
     </message>
     <message id="main.projectlistmodel.create_engine_missing">
-        <location filename="../src/projectlistmodel.cpp" line="295"/>
+        <location filename="../src/projectlistmodel.cpp" line="302"/>
         <source></source>
         <translation>Engine %1 is not installed.</translation>
     </message>
     <message id="main.projectlistmodel.already_listed">
-        <location filename="../src/projectlistmodel.cpp" line="306"/>
-        <location filename="../src/projectlistmodel.cpp" line="345"/>
+        <location filename="../src/projectlistmodel.cpp" line="314"/>
+        <location filename="../src/projectlistmodel.cpp" line="358"/>
         <source></source>
         <translation>%1 is already in the list.</translation>
     </message>
     <message id="main.projectlistmodel.create_folder_not_empty">
-        <location filename="../src/projectlistmodel.cpp" line="310"/>
+        <location filename="../src/projectlistmodel.cpp" line="319"/>
         <source></source>
         <translation>%1 already exists and is not empty.</translation>
     </message>
     <message id="main.projectlistmodel.add_title">
-        <location filename="../src/projectlistmodel.cpp" line="330"/>
-        <location filename="../src/projectlistmodel.cpp" line="335"/>
-        <location filename="../src/projectlistmodel.cpp" line="341"/>
+        <location filename="../src/projectlistmodel.cpp" line="339"/>
         <location filename="../src/projectlistmodel.cpp" line="345"/>
-        <location filename="../src/projectlistmodel.cpp" line="351"/>
+        <location filename="../src/projectlistmodel.cpp" line="352"/>
+        <location filename="../src/projectlistmodel.cpp" line="357"/>
+        <location filename="../src/projectlistmodel.cpp" line="364"/>
         <source></source>
         <translation>Could not add project</translation>
     </message>
     <message id="main.projectlistmodel.add_folder_missing">
-        <location filename="../src/projectlistmodel.cpp" line="330"/>
+        <location filename="../src/projectlistmodel.cpp" line="340"/>
         <source></source>
         <translation>Choose a folder for the project.</translation>
     </message>
     <message id="main.projectlistmodel.add_folder_not_full">
-        <location filename="../src/projectlistmodel.cpp" line="335"/>
+        <location filename="../src/projectlistmodel.cpp" line="346"/>
         <source></source>
         <translation>The folder must be a full path, such as /home/you/Projects/MyGame.</translation>
     </message>
     <message id="main.projectlistmodel.add_not_folder">
-        <location filename="../src/projectlistmodel.cpp" line="341"/>
+        <location filename="../src/projectlistmodel.cpp" line="353"/>
         <source></source>
         <translation>%1 is not a folder.</translation>
     </message>
     <message id="main.projectlistmodel.add_no_project_file">
-        <location filename="../src/projectlistmodel.cpp" line="351"/>
+        <location filename="../src/projectlistmodel.cpp" line="365"/>
         <source></source>
         <translation>No .flaxproj file found in %1.</translation>
     </message>
     <message id="main.projectlistmodel.save_title">
-        <location filename="../src/projectlistmodel.cpp" line="424"/>
+        <location filename="../src/projectlistmodel.cpp" line="438"/>
         <source></source>
         <translation>Could not save projects</translation>
     </message>
     <message id="main.projectlistmodel.save_failed">
-        <location filename="../src/projectlistmodel.cpp" line="424"/>
+        <location filename="../src/projectlistmodel.cpp" line="438"/>
         <source></source>
         <translation>The project list could not be saved. It may be lost when the app closes.</translation>
     </message>

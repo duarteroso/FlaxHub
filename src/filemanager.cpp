@@ -1,10 +1,12 @@
 #include "filemanager.h"
 #include "pathutils.h"
 
+#include <QClipboard>
 #include <QDebug>
 #include <QDesktopServices>
 #include <QDir>
 #include <QFileInfo>
+#include <QGuiApplication>
 #include <QUrl>
 
 namespace {
@@ -82,4 +84,9 @@ QUrl FileManager::folderUrl(const QString &path) const
 {
     const QString folder = folderToShow(expandHome(path));
     return QUrl::fromLocalFile(folder.isEmpty() ? QDir::homePath() : folder);
+}
+
+void FileManager::copyPath(const QString &path) const
+{
+    QGuiApplication::clipboard()->setText(path);
 }
