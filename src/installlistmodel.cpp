@@ -209,7 +209,7 @@ bool InstallListModel::startInstall(const QString &version, const QString &path)
         return false;
     }
     if (!InstallRules::isFreeFolder(target)) {
-        emit errorOccurred(title, qtTrId("main.installlistmodel.install_folder_not_empty").arg(target));
+        emit errorOccurred(title, qtTrId("main.installlistmodel.install_folder_not_empty").arg(collapseHome(target)));
         return false;
     }
 
@@ -260,7 +260,7 @@ void InstallListModel::finishUninstall(const QString &version, const QString &pa
         notifyStateChanged(row);
         emit errorOccurred(qtTrId("main.installlistmodel.removed_title"),
                            qtTrId("main.installlistmodel.removed")
-                               .arg(version, path, problem));
+                               .arg(version, collapseHome(path), problem));
     } else {
         m_table->setKept(row, problem);
         notifyStateChanged(row);
@@ -288,7 +288,7 @@ void InstallListModel::relocate(const QString &version, const QString &path)
         emit errorOccurred(qtTrId("main.installlistmodel.locate_title"),
                            qtTrId("main.installlistmodel.locate_not_created_by_hub")
                                .arg(version)
-                               .arg(folder));
+                               .arg(collapseHome(folder)));
         return;
     }
 
@@ -384,7 +384,7 @@ void InstallListModel::decideFix(const QString &version, const QList<Failure> &f
         notifyStateChanged(row);
         emit errorOccurred(qtTrId("main.installlistmodel.fix_title"),
                            qtTrId("main.installlistmodel.fix_no_parent")
-                               .arg(install.path));
+                               .arg(collapseHome(install.path)));
         return;
     }
 

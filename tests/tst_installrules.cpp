@@ -51,6 +51,7 @@ private slots:
 
     void fullPathRefusesRelativePaths();
     void expandHomeExpandsTilde();
+    void collapseHomeShortensHomePrefix();
     void defaultInstallDirectoryIsFullPathInHome();
 
     void freeFolderAllowsMissingAndEmptyFolders();
@@ -179,6 +180,24 @@ void InstallRulesTest::expandHomeExpandsTilde()
 #if !defined(Q_OS_WIN)
     QCOMPARE(expandHome(QStringLiteral("~\\FlaxHub")), QStringLiteral("~\\FlaxHub"));
 #endif
+}
+
+// The home folder is shown as "~", but only for the home folder and the paths inside it, at a folder boundary. Going
+// back with expandHome gives the full path again.
+void InstallRulesTest::collapseHomeShortensHomePrefix()
+{
+    QCOMPARE(collapseHome(m_home), QStringLiteral("~"));
+    QCOMPARE(collapseHome(m_home + QLatin1Char('/')), QStringLiteral("~"));
+    QCOMPARE(collapseHome(QDir(m_home).filePath(QStringLiteral("FlaxHub/Engines"))),
+             QStringLiteral("~/FlaxHub/Engines"));
+
+    // A folder whose name only starts with the home folder's name is a different folder.
+    QCOMPARE(collapseHome(m_home + QStringLiteral("2/FlaxHub")), m_home + QStringLiteral("2/FlaxHub"));
+    QCOMPARE(collapseHome(m_root.filePath("other")), m_root.filePath("other"));
+    QCOMPARE(collapseHome(QStringLiteral("FlaxHub/Engines")), QStringLiteral("FlaxHub/Engines"));
+
+    const QString engines = QDir(m_home).filePath(QStringLiteral("FlaxHub/Engines"));
+    QCOMPARE(QDir::cleanPath(expandHome(collapseHome(engines))), QDir::cleanPath(engines));
 }
 
 // A fresh install takes its default folder from the home folder, so the Installs list shows it as a full path.

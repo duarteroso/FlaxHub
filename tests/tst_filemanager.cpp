@@ -13,6 +13,7 @@ private slots:
     void folderUrlOfEmptyPathIsAnExistingFolder();
     void folderUrlOfExistingFolderIsThatFolder();
     void folderUrlOfMissingFolderIsNearestExistingParent();
+    void displayPathShowsHomeAsTilde();
 };
 
 namespace {
@@ -51,6 +52,17 @@ void FileManagerTest::folderUrlOfMissingFolderIsNearestExistingParent()
     const QUrl url = manager.folderUrl(root.filePath("missing/deeper"));
     QVERIFY(url.isLocalFile());
     QCOMPARE(canonical(url), QFileInfo(root.path()).canonicalFilePath());
+}
+
+// The home folder is shown as "~" and a folder whose name only starts with it is left as it is. The test uses the real
+// home folder, since it does not point HOME at a temporary one.
+void FileManagerTest::displayPathShowsHomeAsTilde()
+{
+    FileManager manager;
+    const QString home = QDir::homePath();
+    QCOMPARE(manager.displayPath(home), QStringLiteral("~"));
+    QCOMPARE(manager.displayPath(home + QStringLiteral("/FlaxHub")), QStringLiteral("~/FlaxHub"));
+    QCOMPARE(manager.displayPath(home + QStringLiteral("2/FlaxHub")), home + QStringLiteral("2/FlaxHub"));
 }
 
 QTEST_APPLESS_MAIN(FileManagerTest)

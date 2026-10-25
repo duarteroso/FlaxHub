@@ -60,7 +60,7 @@ bool FileManager::reveal(const QString &path)
     if (folder.isEmpty()) {
         qWarning() << "No existing folder to show for" << path;
         emit errorOccurred(qtTrId("main.filemanager.cannot_show_title"),
-                           qtTrId("main.filemanager.no_folder_exists").arg(path));
+                           qtTrId("main.filemanager.no_folder_exists").arg(collapseHome(path)));
         return false;
     }
 
@@ -68,7 +68,7 @@ bool FileManager::reveal(const QString &path)
     if (!QDesktopServices::openUrl(QUrl::fromLocalFile(folder))) {
         qWarning() << "Could not open" << folder << "in the file manager";
         emit errorOccurred(qtTrId("main.filemanager.cannot_show_title"),
-                           qtTrId("main.filemanager.open_failed").arg(folder));
+                           qtTrId("main.filemanager.open_failed").arg(collapseHome(folder)));
         return false;
     }
 
@@ -84,6 +84,11 @@ QUrl FileManager::folderUrl(const QString &path) const
 {
     const QString folder = folderToShow(expandHome(path));
     return QUrl::fromLocalFile(folder.isEmpty() ? QDir::homePath() : folder);
+}
+
+QString FileManager::displayPath(const QString &path) const
+{
+    return collapseHome(path);
 }
 
 void FileManager::copyPath(const QString &path) const

@@ -216,7 +216,7 @@ void ProjectListModel::open(const QString &path, const QString &editorArguments)
     const int row = rowFor(path);
     if (row < 0) {
         emit errorOccurred(qtTrId("main.projectlistmodel.open_title"),
-                           qtTrId("main.projectlistmodel.open_not_listed").arg(path));
+                           qtTrId("main.projectlistmodel.open_not_listed").arg(collapseHome(path)));
         return;
     }
 
@@ -225,7 +225,7 @@ void ProjectListModel::open(const QString &path, const QString &editorArguments)
     if (editor.isEmpty()) {
         emit errorOccurred(qtTrId("main.projectlistmodel.open_title"),
                            qtTrId("main.projectlistmodel.open_engine_missing")
-                               .arg(project.engineVersion, path));
+                               .arg(project.engineVersion, collapseHome(path)));
         return;
     }
 
@@ -234,7 +234,7 @@ void ProjectListModel::open(const QString &path, const QString &editorArguments)
     const QString projectFile = QDir(project.path).filePath(project.name + QStringLiteral(".flaxproj"));
     if (!QFileInfo::exists(projectFile)) {
         emit errorOccurred(qtTrId("main.projectlistmodel.open_title"),
-                           qtTrId("main.projectlistmodel.open_missing").arg(projectFile));
+                           qtTrId("main.projectlistmodel.open_missing").arg(collapseHome(projectFile)));
         return;
     }
 
@@ -244,7 +244,7 @@ void ProjectListModel::open(const QString &path, const QString &editorArguments)
     arguments += splitKeepingQuotes(editorArguments);
     if (!QProcess::startDetached(editor, arguments)) {
         emit errorOccurred(qtTrId("main.projectlistmodel.open_title"),
-                           qtTrId("main.projectlistmodel.open_editor_failed").arg(path));
+                           qtTrId("main.projectlistmodel.open_editor_failed").arg(collapseHome(path)));
         return;
     }
 
@@ -311,12 +311,12 @@ void ProjectListModel::create(const QString &folderName, const QString &location
     project.pinned = false;
     if (rowFor(project.path) >= 0) {
         emit errorOccurred(qtTrId("main.projectlistmodel.create_title"),
-                           qtTrId("main.projectlistmodel.already_listed").arg(project.path));
+                           qtTrId("main.projectlistmodel.already_listed").arg(collapseHome(project.path)));
         return;
     }
     if (QFileInfo::exists(project.path) && !InstallRules::isEmptyFolder(project.path)) {
         emit errorOccurred(qtTrId("main.projectlistmodel.create_title"),
-                           qtTrId("main.projectlistmodel.create_folder_not_empty").arg(project.path));
+                           qtTrId("main.projectlistmodel.create_folder_not_empty").arg(collapseHome(project.path)));
         return;
     }
 
@@ -350,19 +350,19 @@ void ProjectListModel::addExisting(const QString &folder)
     const QString path = canonicalPath(expandHome(folder));
     if (!QFileInfo(path).isDir()) {
         emit errorOccurred(qtTrId("main.projectlistmodel.add_title"),
-                           qtTrId("main.projectlistmodel.add_not_folder").arg(path));
+                           qtTrId("main.projectlistmodel.add_not_folder").arg(collapseHome(path)));
         return;
     }
     if (rowFor(path) >= 0) {
         emit errorOccurred(qtTrId("main.projectlistmodel.add_title"),
-                           qtTrId("main.projectlistmodel.already_listed").arg(path));
+                           qtTrId("main.projectlistmodel.already_listed").arg(collapseHome(path)));
         return;
     }
 
     const QStringList files = QDir(path).entryList({QStringLiteral("*.flaxproj")}, QDir::Files, QDir::Name);
     if (files.isEmpty()) {
         emit errorOccurred(qtTrId("main.projectlistmodel.add_title"),
-                           qtTrId("main.projectlistmodel.add_no_project_file").arg(path));
+                           qtTrId("main.projectlistmodel.add_no_project_file").arg(collapseHome(path)));
         return;
     }
 

@@ -1,5 +1,7 @@
 #include "projectcreator.h"
 
+#include "pathutils.h"
+
 #include <QCoreApplication>
 #include <QDir>
 #include <QFileInfo>
@@ -69,7 +71,7 @@ void ProjectCreator::start(const QString &editor, const QString &projectDir, con
         else if (exitCode != 0)
             fail(QStringLiteral("FlaxEditor exited with code %1.").arg(exitCode));
         else if (!QFileInfo::exists(projectFile))
-            fail(QStringLiteral("FlaxEditor did not create %1.").arg(projectFile));
+            fail(QStringLiteral("FlaxEditor did not create %1.").arg(collapseHome(projectFile)));
         else
             succeed();
     });
@@ -112,7 +114,7 @@ void ProjectCreator::fail(const QString &message)
 
     QString full = reason.isEmpty() ? message : message + QLatin1Char(' ') + reason;
     if (!removed)
-        full += QStringLiteral(" The folder %1 could not be removed.").arg(m_projectDir);
+        full += QStringLiteral(" The folder %1 could not be removed.").arg(collapseHome(m_projectDir));
 
     emit failed(full);
     deleteLater();

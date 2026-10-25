@@ -23,7 +23,7 @@ RowLayout {
 
         Layout.fillWidth: true
         readOnly: true
-        text: root.path
+        text: FileManager.displayPath(root.path)
         Accessible.name: root.label
         ToolTip.visible: copyArea.containsMouse
         ToolTip.text: copiedTimer.running ? qsTrId("main.folderfield.copied") : qsTrId("main.folderfield.copy_hint")

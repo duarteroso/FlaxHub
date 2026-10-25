@@ -31,6 +31,10 @@ public:
     // nearest existing folder, or to the home folder when none exists.
     Q_INVOKABLE QUrl folderUrl(const QString &path) const;
 
+    // The text to show for path, with the home folder as "~". The path itself is unchanged, so copyPath still
+    // copies the full path.
+    Q_INVOKABLE QString displayPath(const QString &path) const;
+
     // Puts path on the clipboard so it can be pasted elsewhere.
     Q_INVOKABLE void copyPath(const QString &path) const;
 

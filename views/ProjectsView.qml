@@ -171,7 +171,7 @@ Rectangle {
 
                     Text {
                         Layout.fillWidth: true
-                        text: row.path
+                        text: FileManager.displayPath(row.path)
                         color: Theme.textMuted
                         font.pixelSize: Theme.fontSmall
                         elide: Text.ElideMiddle

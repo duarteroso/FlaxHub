@@ -103,7 +103,7 @@ HubDialog {
 
     Text {
         Layout.fillWidth: true
-        text: root.path
+        text: FileManager.displayPath(root.path)
         color: Theme.textMuted
         font.pixelSize: Theme.fontSmall
         elide: Text.ElideMiddle
