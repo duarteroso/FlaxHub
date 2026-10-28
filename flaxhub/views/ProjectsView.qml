@@ -121,7 +121,9 @@ Rectangle {
                 row.model.engineVersion = version;
             }
 
-            width: list.width
+            // Sized by the layout, not bound to the list's width: the binding and the layout both set the width, and while
+            // the window resized the row flipped between the two on alternate frames.
+            Layout.fillWidth: true
 
             Component.onCompleted: {
                 if (root.pinFocusPath !== "" && row.path === root.pinFocusPath) {
