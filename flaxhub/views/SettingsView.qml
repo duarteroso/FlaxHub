@@ -95,7 +95,6 @@ Rectangle {
             labelExtras: AbstractButton {
                 id: docsLink
 
-                text: "↗"
                 padding: 0
                 hoverEnabled: true
                 focusPolicy: Qt.StrongFocus
@@ -104,10 +103,12 @@ Rectangle {
                 ToolTip.text: qsTrId("main.settingsview.command_line_docs")
                 onClicked: Qt.openUrlExternally("https://docs.flaxengine.com/manual/editor/advanced/command-line-access.html")
 
-                contentItem: Text {
-                    text: docsLink.text
+                // Three quarters of the usual icon size, so it reads as a small mark beside the label.
+                contentItem: Icon {
+                    implicitWidth: Theme.iconSize * 0.75
+                    implicitHeight: Theme.iconSize * 0.75
+                    source: Qt.resolvedUrl("../icons/open_in_new.svg")
                     color: docsLink.hovered || docsLink.visualFocus ? Theme.accent : Theme.textMuted
-                    font.pixelSize: Theme.fontBody
                 }
 
                 background: Rectangle {
