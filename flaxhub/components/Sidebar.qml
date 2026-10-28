@@ -14,7 +14,7 @@ Rectangle {
         { label: qsTrId("main.sidebar.projects"), iconSource: Qt.resolvedUrl("../icons/joystick.svg") },
         { label: qsTrId("main.sidebar.installs"), iconSource: Qt.resolvedUrl("../icons/install_desktop.svg") }
     ]
-    // Settings sits at the bottom of the panel, after the sections, and its view follows them in the StackLayout.
+    // Settings sits right after the sections, and its view follows them in the StackLayout.
     readonly property int settingsIndex: sections.length
 
     Layout.preferredWidth: collapsed ? Theme.sidebarCollapsedWidth : Theme.sidebarWidth
@@ -72,10 +72,6 @@ Rectangle {
             }
         }
 
-        Item {
-            Layout.fillHeight: true
-        }
-
         SidebarButton {
             Layout.fillWidth: true
             text: qsTrId("main.sidebar.settings")
@@ -83,6 +79,15 @@ Rectangle {
             current: root.currentIndex === root.settingsIndex
             collapsed: root.collapsed
             onClicked: root.currentIndex = root.settingsIndex
+        }
+
+        Item {
+            Layout.fillHeight: true
+        }
+
+        FlaxEngineLink {
+            Layout.fillWidth: true
+            collapsed: root.collapsed
         }
     }
 }

@@ -56,6 +56,8 @@ QtObject {
 
     readonly property int sidebarWidth: 200
     readonly property int sidebarCollapsedWidth: 56
+    // The Flax Engine link at the foot of the sidebar is twice the height of a control, so its logo has room.
+    readonly property int sidebarLinkHeight: 2 * controlHeight
     // The window width under which the sidebar shows only icons.
     readonly property int sidebarCollapseBreakpoint: 760
 }

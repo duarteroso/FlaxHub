@@ -9,17 +9,17 @@
         <translation>Cancel</translation>
     </message>
     <message id="main.folderfield.copied">
-        <location filename="../components/FolderField.qml" line="28"/>
+        <location filename="../components/FolderField.qml" line="29"/>
         <source></source>
         <translation>Path copied</translation>
     </message>
     <message id="main.folderfield.copy_hint">
-        <location filename="../components/FolderField.qml" line="28"/>
+        <location filename="../components/FolderField.qml" line="29"/>
         <source></source>
         <translation>Click to copy the path</translation>
     </message>
     <message id="main.folderfield.browse">
-        <location filename="../components/FolderField.qml" line="53"/>
+        <location filename="../components/FolderField.qml" line="54"/>
         <source></source>
         <translation>Browse…</translation>
     </message>
@@ -50,7 +50,7 @@
         <translation>FlaxHub</translation>
     </message>
     <message id="main.sidebar.settings">
-        <location filename="../components/Sidebar.qml" line="81"/>
+        <location filename="../components/Sidebar.qml" line="86"/>
         <source></source>
         <translation>Settings</translation>
     </message>
@@ -346,77 +346,77 @@
         <translation>Locate engine folder</translation>
     </message>
     <message id="main.installsview.title">
-        <location filename="../views/InstallsView.qml" line="106"/>
+        <location filename="../views/InstallsView.qml" line="108"/>
         <source></source>
         <translation>Installs</translation>
     </message>
     <message id="main.installsview.add_version">
-        <location filename="../views/InstallsView.qml" line="109"/>
+        <location filename="../views/InstallsView.qml" line="111"/>
         <source></source>
         <translation>Add version</translation>
     </message>
     <message id="main.installsview.busy_notice">
-        <location filename="../views/InstallsView.qml" line="119"/>
+        <location filename="../views/InstallsView.qml" line="121"/>
         <source></source>
         <translation>Another install is running. Install, Retry and Fix wait for it to finish.</translation>
     </message>
     <message id="main.installsview.engine_name">
-        <location filename="../views/InstallsView.qml" line="188"/>
+        <location filename="../views/InstallsView.qml" line="190"/>
         <source></source>
         <translation>FlaxEngine %1</translation>
     </message>
     <message id="main.installsview.default_badge">
-        <location filename="../views/InstallsView.qml" line="201"/>
+        <location filename="../views/InstallsView.qml" line="203"/>
         <source></source>
         <translation>Default</translation>
     </message>
     <message id="main.installsview.retry">
-        <location filename="../views/InstallsView.qml" line="220"/>
+        <location filename="../views/InstallsView.qml" line="222"/>
         <source></source>
         <translation>Retry</translation>
     </message>
     <message id="main.installsview.install">
-        <location filename="../views/InstallsView.qml" line="220"/>
+        <location filename="../views/InstallsView.qml" line="222"/>
         <source></source>
         <translation>Install</translation>
     </message>
     <message id="main.installsview.fix">
-        <location filename="../views/InstallsView.qml" line="234"/>
+        <location filename="../views/InstallsView.qml" line="236"/>
         <source></source>
         <translation>Fix</translation>
     </message>
     <message id="main.installsview.locate">
-        <location filename="../views/InstallsView.qml" line="242"/>
+        <location filename="../views/InstallsView.qml" line="244"/>
         <source></source>
         <translation>Locate folder…</translation>
     </message>
     <message id="main.installsview.set_default">
-        <location filename="../views/InstallsView.qml" line="253"/>
+        <location filename="../views/InstallsView.qml" line="255"/>
         <source></source>
         <translation>Set as default</translation>
     </message>
     <message id="main.installsview.remove_from_list">
-        <location filename="../views/InstallsView.qml" line="265"/>
+        <location filename="../views/InstallsView.qml" line="267"/>
         <source></source>
         <translation>Remove from list</translation>
     </message>
     <message id="main.installsview.uninstall">
-        <location filename="../views/InstallsView.qml" line="265"/>
+        <location filename="../views/InstallsView.qml" line="267"/>
         <source></source>
         <translation>Uninstall</translation>
     </message>
     <message id="main.installsview.progress_label">
-        <location filename="../views/InstallsView.qml" line="288"/>
+        <location filename="../views/InstallsView.qml" line="290"/>
         <source></source>
         <translation>Progress of FlaxEngine %1</translation>
     </message>
     <message id="main.installsview.empty_title">
-        <location filename="../views/InstallsView.qml" line="333"/>
+        <location filename="../views/InstallsView.qml" line="335"/>
         <source></source>
         <translation>No engines installed</translation>
     </message>
     <message id="main.installsview.empty_detail">
-        <location filename="../views/InstallsView.qml" line="334"/>
+        <location filename="../views/InstallsView.qml" line="336"/>
         <source></source>
         <translation>Install a FlaxEngine version to open projects with it.</translation>
     </message>
@@ -426,92 +426,92 @@
         <translation>Add existing project</translation>
     </message>
     <message id="main.projectsview.unpin">
-        <location filename="../views/ProjectsView.qml" line="118"/>
+        <location filename="../views/ProjectsView.qml" line="120"/>
         <source></source>
         <translation>Unpin project</translation>
     </message>
     <message id="main.projectsview.pin">
-        <location filename="../views/ProjectsView.qml" line="118"/>
+        <location filename="../views/ProjectsView.qml" line="120"/>
         <source></source>
         <translation>Pin project</translation>
     </message>
     <message id="main.projectsview.engine_version_of">
-        <location filename="../views/ProjectsView.qml" line="195"/>
+        <location filename="../views/ProjectsView.qml" line="197"/>
         <source></source>
         <translation>Engine version of %1</translation>
     </message>
     <message id="main.projectsview.not_installed">
-        <location filename="../views/ProjectsView.qml" line="220"/>
+        <location filename="../views/ProjectsView.qml" line="222"/>
         <source></source>
         <translation>Not installed</translation>
     </message>
     <message id="main.projectsview.install">
-        <location filename="../views/ProjectsView.qml" line="226"/>
+        <location filename="../views/ProjectsView.qml" line="228"/>
         <source></source>
         <translation>Install…</translation>
     </message>
     <message id="main.projectsview.open">
-        <location filename="../views/ProjectsView.qml" line="231"/>
+        <location filename="../views/ProjectsView.qml" line="233"/>
         <source></source>
         <translation>Open</translation>
     </message>
     <message id="main.projectsview.remove_from_list">
-        <location filename="../views/ProjectsView.qml" line="244"/>
+        <location filename="../views/ProjectsView.qml" line="246"/>
         <source></source>
         <translation>Remove from list</translation>
     </message>
     <message id="main.projectsview.title">
-        <location filename="../views/ProjectsView.qml" line="263"/>
+        <location filename="../views/ProjectsView.qml" line="265"/>
         <source></source>
         <translation>Projects</translation>
     </message>
     <message id="main.projectsview.add_existing">
-        <location filename="../views/ProjectsView.qml" line="266"/>
+        <location filename="../views/ProjectsView.qml" line="268"/>
         <source></source>
         <translation>Add existing</translation>
     </message>
     <message id="main.projectsview.new_project">
-        <location filename="../views/ProjectsView.qml" line="274"/>
+        <location filename="../views/ProjectsView.qml" line="276"/>
         <source></source>
         <translation>New project</translation>
     </message>
     <message id="main.projectsview.search_placeholder">
-        <location filename="../views/ProjectsView.qml" line="288"/>
+        <location filename="../views/ProjectsView.qml" line="290"/>
         <source></source>
         <translation>Search projects</translation>
     </message>
     <message id="main.projectsview.sort_last_opened">
-        <location filename="../views/ProjectsView.qml" line="294"/>
+        <location filename="../views/ProjectsView.qml" line="296"/>
         <source></source>
         <translation>Last opened</translation>
     </message>
     <message id="main.projectsview.sort_name">
-        <location filename="../views/ProjectsView.qml" line="294"/>
+        <location filename="../views/ProjectsView.qml" line="296"/>
         <source></source>
         <translation>Name</translation>
     </message>
     <message id="main.projectsview.sort_label">
-        <location filename="../views/ProjectsView.qml" line="295"/>
+        <location filename="../views/ProjectsView.qml" line="297"/>
         <source></source>
         <translation>Sort projects</translation>
     </message>
     <message id="main.projectsview.empty_search_title">
-        <location filename="../views/ProjectsView.qml" line="365"/>
+        <location filename="../views/ProjectsView.qml" line="367"/>
         <source></source>
         <translation>No projects match &quot;%1&quot;</translation>
     </message>
     <message id="main.projectsview.empty_title">
-        <location filename="../views/ProjectsView.qml" line="366"/>
+        <location filename="../views/ProjectsView.qml" line="368"/>
         <source></source>
         <translation>No projects yet</translation>
     </message>
     <message id="main.projectsview.empty_search_detail">
-        <location filename="../views/ProjectsView.qml" line="368"/>
+        <location filename="../views/ProjectsView.qml" line="370"/>
         <source></source>
         <translation>Try a different search.</translation>
     </message>
     <message id="main.projectsview.empty_detail">
-        <location filename="../views/ProjectsView.qml" line="369"/>
+        <location filename="../views/ProjectsView.qml" line="371"/>
         <source></source>
         <translation>Create a new project or add one from disk.</translation>
     </message>
@@ -876,6 +876,11 @@
         <location filename="../src/projectlistmodel.cpp" line="438"/>
         <source></source>
         <translation>The project list could not be saved. It may be lost when the app closes.</translation>
+    </message>
+    <message id="main.flaxenginelink.website">
+        <location filename="../components/FlaxEngineLink.qml" line="17"/>
+        <source></source>
+        <translation>Flax Engine website</translation>
     </message>
 </context>
 </TS>

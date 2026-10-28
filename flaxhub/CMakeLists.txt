@@ -34,6 +34,7 @@ qt_add_qml_module(appFlaxHub
         components/Sidebar.qml
         components/Icon.qml
         components/SidebarButton.qml
+        components/FlaxEngineLink.qml
         components/ViewHeader.qml
         components/HubButton.qml
         components/HubDialog.qml
@@ -57,6 +58,7 @@ qt_add_qml_module(appFlaxHub
         dialogs/NewProjectDialog.qml
         dialogs/NoticeDialog.qml
     RESOURCES
+        icons/Logo_Title.png
         icons/joystick.svg
         icons/install_desktop.svg
         icons/settings.svg

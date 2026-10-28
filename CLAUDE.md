@@ -2,17 +2,19 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+The Qt project is in the `flaxhub/` folder. The repo root holds this file, `README.md`, `LICENSE`, `.gitignore`, `.qmllint.ini` and the `build/` folder. Run the commands below from the repo root. Other paths, such as `src/` and `tests/`, are relative to `flaxhub/` unless they say repo root.
+
 ## Build and run
 
 Qt 6 Qt Quick app built with CMake (≥ 3.22, the CMake version Qt 6.10's documentation gives for configuring a project on most platforms). Qt 6.12 is installed at `/home/duarteroso/Qt/6.12.0/gcc_64`; the project requires Qt 6.10+.
 
 ```
-cmake -S . -B build/Desktop_Qt_6_12_0_Debug -DQt6_DIR=/home/duarteroso/Qt/6.12.0/gcc_64/lib/cmake/Qt6 -DCMAKE_BUILD_TYPE=Debug
+cmake -S flaxhub -B build/Desktop_Qt_6_12_0_Debug -DQt6_DIR=/home/duarteroso/Qt/6.12.0/gcc_64/lib/cmake/Qt6 -DCMAKE_BUILD_TYPE=Debug
 cmake --build build/Desktop_Qt_6_12_0_Debug
 ./build/Desktop_Qt_6_12_0_Debug/appFlaxHub
 ```
 
-- `build*/` is gitignored and follows Qt Creator's `build/<kit>` layout. The existing `build/Desktop_Qt_6_12_0_Debug` was configured with Homebrew clang++ (`/home/linuxbrew/.linuxbrew/bin/clang++`); a fresh configure uses the default compiler unless you pass `-DCMAKE_CXX_COMPILER`.
+- `build*/` at the repo root is gitignored and follows Qt Creator's `build/<kit>` layout. `build/Desktop_Qt_6_12_0_Debug` is configured with the default compiler; pass `-DCMAKE_CXX_COMPILER=/home/linuxbrew/.linuxbrew/bin/clang++` to use Homebrew clang++ instead.
 - Configure needs OpenGL development files (`mesa-libGL-devel` and `libglvnd-devel` on Fedora). Without them, configure fails with `Could NOT find OpenGL` → `Qt6Gui` → `Qt6Quick` not found. They are installed on the Fedora machine.
 - The app and the tests build with `-Wall -Wextra`, or `/W4` under MSVC. The flags are set once in `CMakeLists.txt` as `FLAXHUB_WARNING_FLAGS`. Do not disable warnings to make a build pass.
 
@@ -37,10 +39,10 @@ The tests use temporary folders only. `tst_installrules` points `HOME` at a temp
 ## Lint
 
 ```
-qmllint -I build/Desktop_Qt_6_12_0_Debug $(find . -name '*.qml' -not -path './build*/*')
+qmllint -I build/Desktop_Qt_6_12_0_Debug $(find . -name '*.qml' -not -path '*/build*/*')
 ```
 
-Run it after a build, since the FlaxHub module's `qmldir` is generated there. `.qmllint.ini` in the repo root holds the qmllint settings and disables nothing. The import path has to come from `-I`: `AdditionalQmlImportPaths` in the ini is resolved against each linted file's folder, so one relative path cannot serve both the root QML files and the subfolders. The command finds the QML files on disk, since `git ls-files` lists deleted files until they are committed and misses new ones. The QML files lint with no errors, but two warnings are expected. The first, that `Theme` is not declared as a singleton, comes from linting `Theme.qml` in the repo root, where there is no `qmldir`; the generated module declares it as a singleton. The second, that `Qt.application.state` is not a member of `QQmlApplication`, comes from `dialogs/AddInstallDialog.qml`. `QQuickApplication`, which QtQuick declares, has that property, so this looks like a gap in qmllint's type information rather than a bug in the code. There is no format configuration.
+Run it after a build, since the FlaxHub module's `qmldir` is generated there. `.qmllint.ini` in the repo root holds the qmllint settings and disables nothing. The import path has to come from `-I`: `AdditionalQmlImportPaths` in the ini is resolved against each linted file's folder, so one relative path cannot serve both the root QML files and the subfolders. The command finds the QML files on disk, since `git ls-files` lists deleted files until they are committed and misses new ones. The QML files lint with no errors, but two warnings are expected. The first, that `Theme` is not declared as a singleton, comes from linting `flaxhub/Theme.qml`, where there is no `qmldir`; the generated module declares it as a singleton. The second, that `Qt.application.state` is not a member of `QQmlApplication`, comes from `dialogs/AddInstallDialog.qml`. `QQuickApplication`, which QtQuick declares, has that property, so this looks like a gap in qmllint's type information rather than a bug in the code. There is no format configuration.
 
 ## Architecture
 

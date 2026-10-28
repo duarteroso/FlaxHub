@@ -52,3 +52,4 @@ Thumbs.db
 .uic/
 /build*/
 /.qtcreator/
+/flaxhub/build/
