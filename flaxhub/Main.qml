@@ -11,6 +11,8 @@ ApplicationWindow {
     height: 700
     minimumWidth: 1100
     minimumHeight: 700
+    maximumWidth: 1100
+    maximumHeight: 700
     visible: true
     title: qsTrId("main.window.title")
     color: Theme.windowBg
