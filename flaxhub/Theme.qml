@@ -3,17 +3,21 @@ pragma Singleton
 import QtQuick
 
 QtObject {
-    readonly property color windowBg: "#1f1f1f"
+    // Colors follow the Flax editor's default dark style (FlaxEngine, Source/Editor/Options/OptionsModule.cs, CreateDefaultStyle).
+    readonly property color windowBg: "#1c1c1c"
+    // The editor has no sidebar color, so this stays a step darker than windowBg.
     readonly property color sidebarBg: "#171717"
-    readonly property color surface: "#262626"
-    readonly property color surfaceHover: "#2d2d2d"
-    readonly property color border: "#363636"
+    readonly property color surface: "#2d2d30"
+    readonly property color surfaceHover: "#333337"
+    readonly property color border: "#54545c"
     // Text tokens reach WCAG AA (4.5:1) on windowBg, sidebarBg, surface and surfaceHover, and on the tinted StatusBadge over them.
-    readonly property color text: "#e7e7e7"
-    readonly property color textMuted: "#ababab"
-    readonly property color accent: "#4ba3ff"
+    readonly property color text: "#ffffff"
+    readonly property color textMuted: "#a9a9b3"
+    // The editor's blue for selection borders and focus. White text on it is 3.15:1, so accentText stays dark. As text on surface it is 4.4:1.
+    readonly property color accent: "#1c97ea"
     readonly property color accentText: "#111111"
-    readonly property color warning: "#f0b429"
+    readonly property color warning: "#ffa500"
+    // The editor's reds are about 3:1 or less as text on these backgrounds, so danger keeps a lighter red that reads as text.
     readonly property color danger: "#ef6b6b"
 
     readonly property int spaceXxs: 2
