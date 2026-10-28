@@ -35,25 +35,9 @@ AppSettings::AppSettings(QObject *parent)
 {
     QSettings settings;
     settings.beginGroup(settingsGroup);
-    m_theme = settings.value("theme", QStringLiteral("system")).toString();
     m_installDirectory = settings.value("installDirectory", InstallLayout::defaultInstallDirectory()).toString();
     m_projectsDirectory = settings.value("projectsDirectory", hubFolder() + QStringLiteral("/Projects")).toString();
     m_editorArguments = settings.value("editorArguments").toString();
-}
-
-QString AppSettings::theme() const
-{
-    return m_theme;
-}
-
-void AppSettings::setTheme(const QString &theme)
-{
-    if (m_theme == theme)
-        return;
-
-    m_theme = theme;
-    save("theme", theme);
-    emit themeChanged();
 }
 
 QString AppSettings::installDirectory() const

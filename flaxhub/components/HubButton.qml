@@ -40,7 +40,7 @@ Button {
              : root.primary ? (root.down ? Qt.darker(Theme.accent, 1.15) : Theme.accent)
              : (root.hovered ? Theme.surfaceHover : Theme.surface)
         opacity: root.enabled ? 1 : Theme.disabledFillOpacity
-        // The focus ring shows only for keyboard focus. It is white on a filled button, where the accent would not show.
+        // The focus ring shows only for keyboard focus. On a filled button it is accentText, where the accent would not show.
         border.width: root.visualFocus ? Theme.focusRingWidth : 0
         border.color: root.primary || root.danger ? Theme.accentText : Theme.accent
     }

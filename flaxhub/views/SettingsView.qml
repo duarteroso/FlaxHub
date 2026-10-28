@@ -21,36 +21,6 @@ Rectangle {
         }
 
         SectionLabel {
-            text: qsTrId("main.settingsview.appearance")
-        }
-
-        SettingsRow {
-            label: qsTrId("main.settingsview.theme")
-
-            RadioButton {
-                text: qsTrId("main.settingsview.theme_system")
-                checked: root.prefs.theme === "system"
-                onClicked: root.prefs.theme = "system"
-            }
-
-            RadioButton {
-                text: qsTrId("main.settingsview.theme_light")
-                checked: root.prefs.theme === "light"
-                onClicked: root.prefs.theme = "light"
-            }
-
-            RadioButton {
-                text: qsTrId("main.settingsview.theme_dark")
-                checked: root.prefs.theme === "dark"
-                onClicked: root.prefs.theme = "dark"
-            }
-
-            Item {
-                Layout.fillWidth: true
-            }
-        }
-
-        SectionLabel {
             text: qsTrId("main.settingsview.locations")
         }
 

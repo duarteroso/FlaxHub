@@ -3,25 +3,18 @@ pragma Singleton
 import QtQuick
 
 QtObject {
-    // "system", "light" or "dark". Main.qml binds this to the saved preference.
-    property string preference: "system"
-
-    readonly property bool dark: preference === "dark"
-        || (preference === "system" && Application.styleHints.colorScheme === Qt.Dark)
-
-    readonly property color windowBg: dark ? "#1f1f1f" : "#e7e7e7"
-    readonly property color sidebarBg: dark ? "#171717" : "#e0e0e0"
-    readonly property color surface: dark ? "#262626" : "#f4f4f4"
-    readonly property color surfaceHover: dark ? "#2d2d2d" : "#ebebeb"
-    readonly property color border: dark ? "#363636" : "#cfcfcf"
+    readonly property color windowBg: "#1f1f1f"
+    readonly property color sidebarBg: "#171717"
+    readonly property color surface: "#262626"
+    readonly property color surfaceHover: "#2d2d2d"
+    readonly property color border: "#363636"
     // Text tokens reach WCAG AA (4.5:1) on windowBg, sidebarBg, surface and surfaceHover, and on the tinted StatusBadge over them.
-    readonly property color text: dark ? "#e7e7e7" : "#1f1f1f"
-    readonly property color textMuted: dark ? "#ababab" : "#565656"
-    // The light accent is dark enough for white text on it. Its StatusBadge tint (Qt.alpha 0.09) is what keeps its text at 4.5:1.
-    readonly property color accent: dark ? "#4ba3ff" : "#135bab"
-    readonly property color accentText: dark ? "#111111" : "#ffffff"
-    readonly property color warning: dark ? "#f0b429" : "#784d00"
-    readonly property color danger: dark ? "#ef6b6b" : "#bf2727"
+    readonly property color text: "#e7e7e7"
+    readonly property color textMuted: "#ababab"
+    readonly property color accent: "#4ba3ff"
+    readonly property color accentText: "#111111"
+    readonly property color warning: "#f0b429"
+    readonly property color danger: "#ef6b6b"
 
     readonly property int spaceXxs: 2
     readonly property int spaceXs: 4

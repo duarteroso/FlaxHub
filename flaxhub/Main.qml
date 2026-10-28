@@ -50,13 +50,6 @@ ApplicationWindow {
     palette.placeholderText: Theme.textMuted
     palette.mid: Theme.border
 
-    // Applies the saved theme. AppSettings saves each preference, and the views read them through their prefs property.
-    Binding {
-        target: Theme
-        property: "preference"
-        value: AppSettings.theme
-    }
-
     InstallListModel {
         id: installModel
 

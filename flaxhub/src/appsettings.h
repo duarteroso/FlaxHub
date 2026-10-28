@@ -12,16 +12,12 @@ class AppSettings : public QObject
     Q_OBJECT
     QML_ELEMENT
     QML_SINGLETON
-    Q_PROPERTY(QString theme READ theme WRITE setTheme NOTIFY themeChanged)
     Q_PROPERTY(QString installDirectory READ installDirectory WRITE setInstallDirectory NOTIFY installDirectoryChanged)
     Q_PROPERTY(QString projectsDirectory READ projectsDirectory WRITE setProjectsDirectory NOTIFY projectsDirectoryChanged)
     Q_PROPERTY(QString editorArguments READ editorArguments WRITE setEditorArguments NOTIFY editorArgumentsChanged)
 
 public:
     explicit AppSettings(QObject *parent = nullptr);
-
-    QString theme() const;
-    void setTheme(const QString &theme);
 
     QString installDirectory() const;
     void setInstallDirectory(const QString &installDirectory);
@@ -36,7 +32,6 @@ public:
 signals:
     // A setting could not be saved, or a folder setting was refused. Main.qml shows it.
     void errorOccurred(const QString &title, const QString &message);
-    void themeChanged();
     void installDirectoryChanged();
     void projectsDirectoryChanged();
     void editorArgumentsChanged();
@@ -45,7 +40,6 @@ private:
     // Saves one value and reports a failed write through errorOccurred.
     void save(const char *key, const QString &value);
 
-    QString m_theme;
     QString m_installDirectory;
     QString m_projectsDirectory;
     QString m_editorArguments;

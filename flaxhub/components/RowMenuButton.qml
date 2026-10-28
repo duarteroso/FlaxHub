@@ -17,8 +17,7 @@ ToolButton {
     Menu {
         id: menu
 
-        // Popups don't reliably follow palette changes, so a menu can keep the theme it was created in.
-        // Following the button's palette keeps it in step with the theme.
+        // The menu takes the button's palette, so it uses the window's colors.
         palette: root.palette
     }
 }

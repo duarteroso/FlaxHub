@@ -1,6 +1,7 @@
 #include <QGuiApplication>
 #include <QLoggingCategory>
 #include <QQmlApplicationEngine>
+#include <QStyleHints>
 #include <QTranslator>
 
 int main(int argc, char *argv[])
@@ -13,6 +14,9 @@ int main(int argc, char *argv[])
     QGuiApplication app(argc, argv);
     QGuiApplication::setOrganizationName("FlaxHub");
     QGuiApplication::setApplicationName("FlaxHub");
+
+    // The Hub is dark only, as Flax is. This also keeps the window frame and native dialogs dark on a light system.
+    QGuiApplication::styleHints()->setColorScheme(Qt::ColorScheme::Dark);
 
     // Texts are looked up by id, so the English catalogue is always loaded. Without it the ids would show.
     QTranslator translator;
