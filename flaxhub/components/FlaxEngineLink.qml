@@ -56,8 +56,11 @@ AbstractButton {
             }
         }
 
+        // Half the size of the sidebar icons, so it reads as a small mark beside the logo.
         Icon {
             visible: !root.collapsed
+            implicitWidth: Theme.iconSize * 0.75
+            implicitHeight: Theme.iconSize * 0.75
             source: Qt.resolvedUrl("../icons/open_in_new.svg")
             color: Theme.textMuted
         }
