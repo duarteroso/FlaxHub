@@ -13,7 +13,7 @@ AbstractButton {
     property bool collapsed: false
 
     text: qsTrId("main.flaxenginelink.website")
-    implicitHeight: Theme.sidebarLinkHeight
+    implicitHeight: Theme.controlHeight
     padding: Theme.spaceS
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
