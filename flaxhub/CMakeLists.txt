@@ -61,6 +61,7 @@ qt_add_qml_module(appFlaxHub
         icons/Logo_Title.png
         icons/joystick.svg
         icons/install_desktop.svg
+        icons/open_in_new.svg
         icons/settings.svg
         icons/star.svg
         icons/star_filled.svg

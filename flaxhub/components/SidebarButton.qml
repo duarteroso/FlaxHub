@@ -19,7 +19,8 @@ AbstractButton {
     ToolTip.text: root.text
 
     contentItem: RowLayout {
-        spacing: Theme.spaceM
+        // Collapsed, the spacing is zero so the two filling spacers center the icon.
+        spacing: root.collapsed ? 0 : Theme.spaceM
 
         Item {
             Layout.fillWidth: root.collapsed

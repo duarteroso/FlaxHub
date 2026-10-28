@@ -2,11 +2,13 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls.Basic
+import QtQuick.Layouts
 import QtQuick.Window
 import FlaxHub
 
-// Opens the Flax Engine website from the sidebar. Its icon is the Flax Engine logo in its own white. Collapsed, the
-// sidebar is too narrow for the wordmark, so only the emblem, the circle at the left of the logo, shows.
+// Opens the Flax Engine website from the sidebar. Its icon is the Flax Engine logo in its own white, followed by an
+// external-link icon to show that the link leaves the app. Collapsed, the sidebar is too narrow for the wordmark and
+// that icon, so only the emblem, the circle at the left of the logo, shows.
 AbstractButton {
     id: root
 
@@ -22,25 +24,46 @@ AbstractButton {
     ToolTip.text: root.text
     onClicked: Qt.openUrlExternally("https://flaxengine.com/")
 
-    contentItem: Item {
-        id: logo
+    contentItem: RowLayout {
+        spacing: root.collapsed ? 0 : Theme.spaceM
 
-        // The shown part of the logo is the emblem, the 367 pixel circle at (208, 18) in the image, when collapsed, or the
-        // emblem and the wordmark, which ends at 1270, when expanded. The image is scaled so that part fills this item, and
-        // the margins around it fall outside the item and are clipped.
-        readonly property real shownWidth: root.collapsed ? 367 : 1062
-        readonly property real iconScale: Math.min(width / shownWidth, height / 367)
+        // The two spacers center the logo and the icon in the button, or the emblem alone when collapsed.
+        Item {
+            Layout.fillWidth: true
+        }
 
-        clip: true
+        Item {
+            id: logo
 
-        Image {
-            x: (logo.width - logo.shownWidth * logo.iconScale) / 2 - 208 * logo.iconScale
-            y: (logo.height - 367 * logo.iconScale) / 2 - 18 * logo.iconScale
-            width: 1500 * logo.iconScale
-            height: 400 * logo.iconScale
-            source: Qt.resolvedUrl("../icons/Logo_Title.png")
-            // Rasterize at device pixels, as Icon does.
-            sourceSize: Qt.size(width * Screen.devicePixelRatio, height * Screen.devicePixelRatio)
+            // The shown part of the logo is the emblem, the 367 pixel circle at (208, 18) in the image, when collapsed, or the
+            // emblem and the wordmark, which ends at 1270, when expanded. The item is as wide as that part at its height, so
+            // the image is scaled to that height, and the margins around it fall outside the item and are clipped.
+            readonly property real shownWidth: root.collapsed ? 367 : 1062
+            readonly property real iconScale: Math.min(width / shownWidth, height / 367)
+
+            implicitHeight: Theme.iconSize
+            implicitWidth: shownWidth * implicitHeight / 367
+            clip: true
+
+            Image {
+                x: (logo.width - logo.shownWidth * logo.iconScale) / 2 - 208 * logo.iconScale
+                y: (logo.height - 367 * logo.iconScale) / 2 - 18 * logo.iconScale
+                width: 1500 * logo.iconScale
+                height: 400 * logo.iconScale
+                source: Qt.resolvedUrl("../icons/Logo_Title.png")
+                // Rasterize at device pixels, as Icon does.
+                sourceSize: Qt.size(width * Screen.devicePixelRatio, height * Screen.devicePixelRatio)
+            }
+        }
+
+        Icon {
+            visible: !root.collapsed
+            source: Qt.resolvedUrl("../icons/open_in_new.svg")
+            color: Theme.textMuted
+        }
+
+        Item {
+            Layout.fillWidth: true
         }
     }
 
