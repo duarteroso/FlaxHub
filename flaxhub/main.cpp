@@ -4,12 +4,16 @@
 #include <QStyleHints>
 #include <QTranslator>
 
+#include "src/platformtweaks.h"
+
 int main(int argc, char *argv[])
 {
     // Qt's Wayland text-input code warns "Trying to disable ... but 0x0 is focused" when the window
     // receives its first focus before the compositor activates it. It happens with no text fields at all
     // and does not affect input, so hide just that warning.
     QLoggingCategory::setFilterRules(QStringLiteral("qt.qpa.wayland.textinput.warning=false"));
+
+    PlatformTweaks::disableFullScreenMenuItem();
 
     QGuiApplication app(argc, argv);
     QGuiApplication::setOrganizationName("FlaxHub");

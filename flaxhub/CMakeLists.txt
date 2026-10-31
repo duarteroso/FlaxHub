@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.22)
 
 project(FlaxHub VERSION 0.1 LANGUAGES CXX)
 
+if (APPLE)
+    enable_language(OBJCXX)
+endif()
+
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Quick QuickDialogs2 Network QuickEffects Concurrent LinguistTools)
@@ -22,7 +26,14 @@ endif()
 
 qt_add_executable(appFlaxHub
     main.cpp
+    src/platformtweaks.h
+    src/platformtweaks.cpp
 )
+
+if (APPLE)
+    target_sources(appFlaxHub PRIVATE src/platformtweaks_mac.mm)
+    target_link_libraries(appFlaxHub PRIVATE "-framework Foundation")
+endif()
 
 set_source_files_properties(Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 
