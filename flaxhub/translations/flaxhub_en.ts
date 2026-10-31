@@ -29,8 +29,8 @@
         <translation>Progress of %1</translation>
     </message>
     <message id="main.rowmenubutton.more_actions">
-        <location filename="../components/RowMenuButton.qml" line="12"/>
-        <location filename="../components/RowMenuButton.qml" line="14"/>
+        <location filename="../components/RowMenuButton.qml" line="13"/>
+        <location filename="../components/RowMenuButton.qml" line="15"/>
         <source></source>
         <translation>More actions</translation>
     </message>
@@ -245,83 +245,93 @@
         <source></source>
         <translation>FlaxHub</translation>
     </message>
+    <message id="main.menu.about_title">
+        <location filename="../Main.qml" line="37"/>
+        <source></source>
+        <translation>About FlaxHub</translation>
+    </message>
+    <message id="main.menu.about_version">
+        <location filename="../Main.qml" line="37"/>
+        <source></source>
+        <translation>Version %1</translation>
+    </message>
     <message id="main.uninstalldialog.title_invalid">
-        <location filename="../Main.qml" line="184"/>
+        <location filename="../Main.qml" line="206"/>
         <source></source>
         <translation>Remove engine</translation>
     </message>
     <message id="main.uninstalldialog.title">
-        <location filename="../Main.qml" line="185"/>
+        <location filename="../Main.qml" line="207"/>
         <source></source>
         <translation>Uninstall engine</translation>
     </message>
     <message id="main.uninstalldialog.question_invalid">
-        <location filename="../Main.qml" line="187"/>
+        <location filename="../Main.qml" line="209"/>
         <source></source>
         <translation>Remove FlaxEngine %1 from the list? This permanently deletes the folder below and everything in it. This can&apos;t be undone.</translation>
     </message>
     <message id="main.uninstalldialog.question">
-        <location filename="../Main.qml" line="188"/>
+        <location filename="../Main.qml" line="210"/>
         <source></source>
         <translation>Delete FlaxEngine %1? This permanently deletes the folder below and everything in it. This can&apos;t be undone.</translation>
     </message>
     <message id="main.uninstalldialog.confirm_invalid">
-        <location filename="../Main.qml" line="190"/>
+        <location filename="../Main.qml" line="212"/>
         <source></source>
         <translation>Remove</translation>
     </message>
     <message id="main.uninstalldialog.confirm">
-        <location filename="../Main.qml" line="191"/>
+        <location filename="../Main.qml" line="213"/>
         <source></source>
         <translation>Uninstall</translation>
     </message>
     <message id="main.clearfolderdialog.title">
-        <location filename="../Main.qml" line="199"/>
+        <location filename="../Main.qml" line="221"/>
         <source></source>
         <translation>Clear engine folder</translation>
     </message>
     <message id="main.clearfolderdialog.question">
-        <location filename="../Main.qml" line="200"/>
+        <location filename="../Main.qml" line="222"/>
         <source></source>
         <translation>This folder is not a complete FlaxEngine %1 checkout. Fix permanently deletes the folder below and everything in it, then clones FlaxEngine %1 into it again. This can&apos;t be undone.</translation>
     </message>
     <message id="main.clearfolderdialog.confirm">
-        <location filename="../Main.qml" line="201"/>
+        <location filename="../Main.qml" line="223"/>
         <source></source>
         <translation>Delete and fix</translation>
     </message>
     <message id="main.removefolderdialog.title">
-        <location filename="../Main.qml" line="212"/>
+        <location filename="../Main.qml" line="234"/>
         <source></source>
         <translation>Remove project folder</translation>
     </message>
     <message id="main.removefolderdialog.question">
-        <location filename="../Main.qml" line="213"/>
+        <location filename="../Main.qml" line="235"/>
         <source></source>
         <translation>Remove project %1? Its folder and all the files in it are permanently deleted, and the project is also removed from the list. This can&apos;t be undone.</translation>
     </message>
     <message id="main.removefolderdialog.confirm">
-        <location filename="../Main.qml" line="214"/>
+        <location filename="../Main.qml" line="236"/>
         <source></source>
         <translation>Delete folder</translation>
     </message>
     <message id="main.quitdialog.title">
-        <location filename="../Main.qml" line="231"/>
+        <location filename="../Main.qml" line="253"/>
         <source></source>
         <translation>Work in progress</translation>
     </message>
     <message id="main.quitdialog.question">
-        <location filename="../Main.qml" line="232"/>
+        <location filename="../Main.qml" line="254"/>
         <source></source>
         <translation>An engine is still installing, a project is still being created, or a folder is still being deleted. Quitting cuts that short and stops the project being created, and its partial folder is removed. A folder that was being written or deleted may be left incomplete, and the Hub checks each install again on the next start.</translation>
     </message>
     <message id="main.quitdialog.confirm">
-        <location filename="../Main.qml" line="233"/>
+        <location filename="../Main.qml" line="255"/>
         <source></source>
         <translation>Quit anyway</translation>
     </message>
     <message id="main.quitdialog.cancel">
-        <location filename="../Main.qml" line="234"/>
+        <location filename="../Main.qml" line="256"/>
         <source></source>
         <translation>Keep installing</translation>
     </message>
@@ -416,127 +426,127 @@
         <translation>Set as default</translation>
     </message>
     <message id="main.installsview.remove_from_list">
-        <location filename="../views/InstallsView.qml" line="241"/>
+        <location filename="../views/InstallsView.qml" line="243"/>
         <source></source>
         <translation>Remove from list</translation>
     </message>
     <message id="main.installsview.uninstall">
-        <location filename="../views/InstallsView.qml" line="241"/>
+        <location filename="../views/InstallsView.qml" line="243"/>
         <source></source>
         <translation>Uninstall...</translation>
     </message>
     <message id="main.installsview.progress_label">
-        <location filename="../views/InstallsView.qml" line="256"/>
+        <location filename="../views/InstallsView.qml" line="258"/>
         <source></source>
         <translation>Progress of FlaxEngine %1</translation>
     </message>
     <message id="main.installsview.empty_title">
-        <location filename="../views/InstallsView.qml" line="301"/>
+        <location filename="../views/InstallsView.qml" line="303"/>
         <source></source>
         <translation>No engines installed</translation>
     </message>
     <message id="main.installsview.empty_detail">
-        <location filename="../views/InstallsView.qml" line="302"/>
+        <location filename="../views/InstallsView.qml" line="304"/>
         <source></source>
         <translation>Install a FlaxEngine version to open projects with it.</translation>
     </message>
     <message id="main.projectsview.add_existing_title">
-        <location filename="../views/ProjectsView.qml" line="96"/>
+        <location filename="../views/ProjectsView.qml" line="102"/>
         <source></source>
         <translation>Add existing project</translation>
     </message>
     <message id="main.projectsview.unpin">
-        <location filename="../views/ProjectsView.qml" line="120"/>
+        <location filename="../views/ProjectsView.qml" line="126"/>
         <source></source>
         <translation>Unpin project</translation>
     </message>
     <message id="main.projectsview.pin">
-        <location filename="../views/ProjectsView.qml" line="120"/>
+        <location filename="../views/ProjectsView.qml" line="126"/>
         <source></source>
         <translation>Pin project</translation>
     </message>
     <message id="main.projectsview.engine_version_of">
-        <location filename="../views/ProjectsView.qml" line="199"/>
+        <location filename="../views/ProjectsView.qml" line="205"/>
         <source></source>
         <translation>Engine version of %1</translation>
     </message>
     <message id="main.projectsview.not_installed">
-        <location filename="../views/ProjectsView.qml" line="224"/>
+        <location filename="../views/ProjectsView.qml" line="230"/>
         <source></source>
         <translation>Not installed</translation>
     </message>
     <message id="main.projectsview.install">
-        <location filename="../views/ProjectsView.qml" line="230"/>
+        <location filename="../views/ProjectsView.qml" line="236"/>
         <source></source>
         <translation>Install…</translation>
     </message>
     <message id="main.projectsview.open">
-        <location filename="../views/ProjectsView.qml" line="235"/>
+        <location filename="../views/ProjectsView.qml" line="241"/>
         <source></source>
         <translation>Open</translation>
     </message>
     <message id="main.projectsview.remove_from_list">
-        <location filename="../views/ProjectsView.qml" line="248"/>
+        <location filename="../views/ProjectsView.qml" line="254"/>
         <source></source>
         <translation>Remove from list</translation>
     </message>
     <message id="main.projectsview.remove_folder">
-        <location filename="../views/ProjectsView.qml" line="257"/>
+        <location filename="../views/ProjectsView.qml" line="263"/>
         <source></source>
         <translation>Remove...</translation>
     </message>
     <message id="main.projectsview.title">
-        <location filename="../views/ProjectsView.qml" line="274"/>
+        <location filename="../views/ProjectsView.qml" line="280"/>
         <source></source>
         <translation>Projects</translation>
     </message>
     <message id="main.projectsview.add_existing">
-        <location filename="../views/ProjectsView.qml" line="277"/>
+        <location filename="../views/ProjectsView.qml" line="283"/>
         <source></source>
         <translation>Add existing</translation>
     </message>
     <message id="main.projectsview.new_project">
-        <location filename="../views/ProjectsView.qml" line="285"/>
+        <location filename="../views/ProjectsView.qml" line="288"/>
         <source></source>
         <translation>New project</translation>
     </message>
     <message id="main.projectsview.search_placeholder">
-        <location filename="../views/ProjectsView.qml" line="299"/>
+        <location filename="../views/ProjectsView.qml" line="302"/>
         <source></source>
         <translation>Search projects</translation>
     </message>
     <message id="main.projectsview.sort_last_opened">
-        <location filename="../views/ProjectsView.qml" line="305"/>
+        <location filename="../views/ProjectsView.qml" line="308"/>
         <source></source>
         <translation>Last opened</translation>
     </message>
     <message id="main.projectsview.sort_name">
-        <location filename="../views/ProjectsView.qml" line="305"/>
+        <location filename="../views/ProjectsView.qml" line="308"/>
         <source></source>
         <translation>Name</translation>
     </message>
     <message id="main.projectsview.sort_label">
-        <location filename="../views/ProjectsView.qml" line="306"/>
+        <location filename="../views/ProjectsView.qml" line="309"/>
         <source></source>
         <translation>Sort projects</translation>
     </message>
     <message id="main.projectsview.empty_search_title">
-        <location filename="../views/ProjectsView.qml" line="376"/>
+        <location filename="../views/ProjectsView.qml" line="379"/>
         <source></source>
         <translation>No projects match &quot;%1&quot;</translation>
     </message>
     <message id="main.projectsview.empty_title">
-        <location filename="../views/ProjectsView.qml" line="377"/>
+        <location filename="../views/ProjectsView.qml" line="380"/>
         <source></source>
         <translation>No projects yet</translation>
     </message>
     <message id="main.projectsview.empty_search_detail">
-        <location filename="../views/ProjectsView.qml" line="379"/>
+        <location filename="../views/ProjectsView.qml" line="382"/>
         <source></source>
         <translation>Try a different search.</translation>
     </message>
     <message id="main.projectsview.empty_detail">
-        <location filename="../views/ProjectsView.qml" line="380"/>
+        <location filename="../views/ProjectsView.qml" line="383"/>
         <source></source>
         <translation>Create a new project or add one from disk.</translation>
     </message>
@@ -908,6 +918,81 @@
         <location filename="../components/FlaxEngineLink.qml" line="17"/>
         <source></source>
         <translation>Flax Engine website</translation>
+    </message>
+    <message id="main.menu.flaxhub_menu">
+        <location filename="../components/AppMenuBar.qml" line="25"/>
+        <source></source>
+        <translation>FlaxHub</translation>
+    </message>
+    <message id="main.menu.about">
+        <location filename="../components/AppMenuBar.qml" line="28"/>
+        <source></source>
+        <translation>About FlaxHub</translation>
+    </message>
+    <message id="main.menu.settings">
+        <location filename="../components/AppMenuBar.qml" line="36"/>
+        <source></source>
+        <translation>Settings…</translation>
+    </message>
+    <message id="main.menu.quit">
+        <location filename="../components/AppMenuBar.qml" line="46"/>
+        <source></source>
+        <translation>Quit FlaxHub</translation>
+    </message>
+    <message id="main.menu.project_menu">
+        <location filename="../components/AppMenuBar.qml" line="54"/>
+        <source></source>
+        <translation>Project</translation>
+    </message>
+    <message id="main.menu.engine_menu">
+        <location filename="../components/AppMenuBar.qml" line="76"/>
+        <source></source>
+        <translation>Engine</translation>
+    </message>
+    <message id="main.menu.new_project">
+        <location filename="../components/AppMenuBar.qml" line="58"/>
+        <source></source>
+        <translation>New Project…</translation>
+    </message>
+    <message id="main.menu.add_existing_project">
+        <location filename="../components/AppMenuBar.qml" line="67"/>
+        <source></source>
+        <translation>Add Existing Project…</translation>
+    </message>
+    <message id="main.menu.add_install">
+        <location filename="../components/AppMenuBar.qml" line="80"/>
+        <source></source>
+        <translation>Add Install…</translation>
+    </message>
+    <message id="main.menu.view_menu">
+        <location filename="../components/AppMenuBar.qml" line="88"/>
+        <source></source>
+        <translation>View</translation>
+    </message>
+    <message id="main.menu.view_projects">
+        <location filename="../components/AppMenuBar.qml" line="92"/>
+        <source></source>
+        <translation>Projects</translation>
+    </message>
+    <message id="main.menu.view_installs">
+        <location filename="../components/AppMenuBar.qml" line="100"/>
+        <source></source>
+        <translation>Installs</translation>
+    </message>
+    <message id="main.menu.view_settings">
+        <location filename="../components/AppMenuBar.qml" line="108"/>
+        <source></source>
+        <translation>Settings</translation>
+    </message>
+    <message id="main.menu.help_menu">
+        <location filename="../components/AppMenuBar.qml" line="116"/>
+        <source></source>
+        <translation>Help</translation>
+    </message>
+    <message id="main.menu.help_github">
+        <location filename="../components/AppMenuBar.qml" line="119"/>
+        <source></source>
+        <translation>FlaxHub on GitHub</translation>
     </message>
 </context>
 </TS>

@@ -50,6 +50,7 @@ qt_add_qml_module(appFlaxHub
         components/EmptyState.qml
         components/InstallStep.qml
         components/FolderField.qml
+        components/AppMenuBar.qml
         views/ProjectsView.qml
         views/InstallsView.qml
         views/SettingsView.qml
@@ -102,6 +103,8 @@ qt_add_qml_module(appFlaxHub
 
 target_include_directories(appFlaxHub PRIVATE src)
 target_compile_options(appFlaxHub PRIVATE ${FLAXHUB_WARNING_FLAGS})
+# The version the About menu shows. main.cpp sets it as the application version.
+target_compile_definitions(appFlaxHub PRIVATE FLAXHUB_VERSION="${PROJECT_VERSION}")
 
 # The English text of every id-based string. main.cpp loads flaxhub_en.qm from the embedded resources.
 qt_add_translations(appFlaxHub

@@ -14,6 +14,7 @@ int main(int argc, char *argv[])
     QGuiApplication app(argc, argv);
     QGuiApplication::setOrganizationName("FlaxHub");
     QGuiApplication::setApplicationName("FlaxHub");
+    QGuiApplication::setApplicationVersion(QStringLiteral(FLAXHUB_VERSION));
 
     // The Hub is dark only, as Flax is. This also keeps the window frame and native dialogs dark on a light system.
     QGuiApplication::styleHints()->setColorScheme(Qt::ColorScheme::Dark);

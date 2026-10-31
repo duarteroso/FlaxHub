@@ -29,6 +29,26 @@ ApplicationWindow {
         }
     }
 
+    // The menu bar only emits signals. Quit and Close Window call close(), so onClosing still asks while work runs.
+    // The sidebar index drives the StackLayout, so setting it switches the view and highlights the sidebar too.
+    menuBar: AppMenuBar {
+        projectCreating: projectModel.creating
+
+        onAboutRequested: noticeDialog.show(qsTrId("main.menu.about_title"), qsTrId("main.menu.about_version").arg(Qt.application.version))
+        onSettingsRequested: sidebar.currentIndex = sidebar.settingsIndex
+        onQuitRequested: window.close()
+        onNewProjectRequested: newProjectDialog.openFor()
+        onAddExistingProjectRequested: {
+            // Add existing lives on the Projects view, so the view is shown before its folder picker opens.
+            sidebar.currentIndex = 0;
+            projectsView.chooseExistingProject();
+        }
+        onAddInstallRequested: addInstallDialog.openFor("")
+        // The sidebar's first two sections are Projects and Installs.
+        onProjectsRequested: sidebar.currentIndex = 0
+        onInstallsRequested: sidebar.currentIndex = 1
+    }
+
     // Basic controls (ComboBox, Menu, TextField) take their colors from the palette.
     palette.window: Theme.surface
     palette.windowText: Theme.text
@@ -131,6 +151,8 @@ ApplicationWindow {
             currentIndex: sidebar.currentIndex
 
             ProjectsView {
+                id: projectsView
+
                 projects: projectModel
                 installs: installModel
                 installedEngines: installedEngineModel

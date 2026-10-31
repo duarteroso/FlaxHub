@@ -38,6 +38,12 @@ Rectangle {
             list.contentY = bottom - list.height;
     }
 
+    // Opens the folder picker for an existing project. The Add existing button and the window's File menu both call it.
+    function chooseExistingProject() {
+        addFolderDialog.currentFolder = FileManager.folderUrl(root.prefs.projectsDirectory);
+        addFolderDialog.open();
+    }
+
     // Starts the project's editor. A failure is reported through the models' errorOccurred, which the window shows.
     function openProject(path) {
         root.projects.open(path, root.prefs.editorArguments);
@@ -275,10 +281,7 @@ Rectangle {
 
             HubButton {
                 text: qsTrId("main.projectsview.add_existing")
-                onClicked: {
-                    addFolderDialog.currentFolder = FileManager.folderUrl(root.prefs.projectsDirectory);
-                    addFolderDialog.open();
-                }
+                onClicked: root.chooseExistingProject()
             }
 
             HubButton {
