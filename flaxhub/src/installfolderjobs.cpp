@@ -17,19 +17,21 @@ bool removeFolder(const QString &path)
     return InstallRules::isSafeToRemove(path) && QDir(path).removeRecursively();
 }
 
-QString removeInstallFolder(const QString &path, const QString &version)
+InstallFolderJobs::RemoveResult removeInstallFolder(const QString &path, const QString &version, bool invalidEntry)
 {
+    using RemoveResult = InstallFolderJobs::RemoveResult;
+
     if (!QFileInfo::exists(path))
-        return {};
+        return RemoveResult::Removed;
 
-    if (!InstallRules::mayUninstall(path, InstallValidator::hasCompleteCheckout(path, version))) {
-        return QStringLiteral("The folder was not made by FlaxHub and is not a complete FlaxEngine checkout, "
-                              "so it was not deleted.");
-    }
-    if (!QDir(path).removeRecursively())
-        return QStringLiteral("Could not delete the folder");
+    if (!InstallRules::isSafeToRemove(path))
+        return RemoveResult::UnsafePath;
 
-    return {};
+    // The checkout check runs git, so it is only made for an entry that needs it.
+    if (!invalidEntry && !InstallRules::mayUninstall(path, InstallValidator::hasCompleteCheckout(path, version)))
+        return RemoveResult::NotOwned;
+
+    return QDir(path).removeRecursively() ? RemoveResult::Removed : RemoveResult::DeleteFailed;
 }
 
 } // namespace
@@ -54,16 +56,16 @@ void InstallFolderJobs::check(const QString &version, const QString &path,
     }));
 }
 
-void InstallFolderJobs::removeInstall(const QString &version, const QString &path,
-                                      const std::function<void(const QString &)> &onRemoved)
+void InstallFolderJobs::removeInstall(const QString &version, const QString &path, bool invalidEntry,
+                                      const std::function<void(RemoveResult)> &onRemoved)
 {
-    auto *watcher = new QFutureWatcher<QString>(this);
-    connect(watcher, &QFutureWatcher<QString>::finished, this, [watcher, onRemoved]() {
+    auto *watcher = new QFutureWatcher<RemoveResult>(this);
+    connect(watcher, &QFutureWatcher<RemoveResult>::finished, this, [watcher, onRemoved]() {
         watcher->deleteLater();
         onRemoved(watcher->result());
     });
-    watcher->setFuture(QtConcurrent::run([path, version]() {
-        return removeInstallFolder(path, version);
+    watcher->setFuture(QtConcurrent::run([path, version, invalidEntry]() {
+        return removeInstallFolder(path, version, invalidEntry);
     }));
 }
 

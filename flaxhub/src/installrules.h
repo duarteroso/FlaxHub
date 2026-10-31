@@ -23,22 +23,24 @@ bool isEmptyFolder(const QString &path);
 bool isFreeFolder(const QString &path);
 
 // The path comes from the saved settings, so it is checked before anything is deleted. The path is resolved first,
-// so ".." and symlinks cannot lead to a folder other than the one named. A filesystem root, the home folder and any
-// folder that holds the home folder are never removed.
+// so ".." and links in its parents cannot lead to a folder other than the one named. A filesystem root, the home folder
+// and any folder that holds the home folder are never removed. The path itself must be a folder and not a link, since
+// a delete through a link empties the folder it points to.
 bool isSafeToRemove(const QString &path);
 
 // The marker the Hub writes into an engine folder once its clone has made the folder: a file named .flaxhub-install,
 // so the folder records that FlaxHub created it. git refuses to clone into a folder that already has files, so the
-// marker waits for the clone. A clone that was cut short has no marker, so Uninstall keeps it unless it is a complete
-// checkout. Locate accepts a folder only when it has the marker.
+// marker waits for the clone. A clone that was cut short has no marker, so Uninstall of a Failed entry keeps it unless
+// it is a complete checkout. An Invalid entry is deleted either way. Locate accepts a folder only when it has the marker.
 QString markerPath(const QString &path);
 // Writes the marker into the folder at path, which must exist. Returns false when it cannot be written.
 bool writeMarker(const QString &path);
 bool hasMarker(const QString &path);
 
-// Uninstall deletes a folder only when isSafeToRemove allows it and either the Hub made it (it has a marker) or it is a
-// complete checkout (completeCheckout, as InstallValidator::hasCompleteCheckout reports). Any other folder is kept, even
-// one the user chose, since it may hold files the Hub does not own.
+// Uninstall deletes an Installed or Failed entry's folder only when isSafeToRemove allows it and either the Hub made it
+// (it has a marker) or it is a complete checkout (completeCheckout, as InstallValidator::hasCompleteCheckout reports).
+// Any other folder is kept, even one the user chose, since it may hold files the Hub does not own. An Invalid entry is
+// not checked this way: its folder is deleted under isSafeToRemove alone (see InstallFolderJobs::removeInstall).
 bool mayUninstall(const QString &path, bool completeCheckout);
 
 // A clone needs a folder that is missing or empty. A folder that is not a complete checkout is cleared first (see

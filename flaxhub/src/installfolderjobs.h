@@ -19,14 +19,31 @@ class InstallFolderJobs : public QObject
 public:
     using Failure = InstallValidator::Failure;
 
+    // What a delete of an install's folder did. Only Removed leaves no folder behind. NotOwned and UnsafePath are
+    // decided before anything is deleted, so the folder is untouched. DeleteFailed can stop part way, so some files may
+    // be gone.
+    enum class RemoveResult {
+        // The folder is gone, or was never there.
+        Removed,
+        // An Installed or Failed folder that the Hub did not make and that is not a complete checkout.
+        NotOwned,
+        // InstallRules::isSafeToRemove refused the path.
+        UnsafePath,
+        // The delete failed part way.
+        DeleteFailed
+    };
+
     explicit InstallFolderJobs(QObject *parent = nullptr);
 
     // Runs InstallValidator on the folder. onChecked gets the failed checks. checking() is true until then.
     void check(const QString &version, const QString &path, const std::function<void(const QList<Failure> &)> &onChecked);
 
-    // Deletes an install's folder, but only when InstallRules::mayUninstall allows it, and its marker goes with it.
-    // onRemoved gets an empty string once the folder is gone, else the reason it was kept.
-    void removeInstall(const QString &version, const QString &path, const std::function<void(const QString &)> &onRemoved);
+    // Deletes an install's folder, and its marker with it. An Installed or Failed entry is deleted only when
+    // InstallRules::mayUninstall allows it. An Invalid entry (invalidEntry) was listed by FlaxHub, so its folder is
+    // deleted whatever it holds, and only InstallRules::isSafeToRemove applies. A path that is already gone counts as
+    // removed. onRemoved gets the result once the job is done.
+    void removeInstall(const QString &version, const QString &path, bool invalidEntry,
+                       const std::function<void(RemoveResult)> &onRemoved);
 
     // Clears a folder for a Fix. The user has confirmed the clear, so only the path guards apply. onCleared gets whether
     // the folder is gone. A folder that is already gone counts as removed.

@@ -21,6 +21,7 @@ class ProjectListModel : public QAbstractListModel
     QML_ELEMENT
     Q_PROPERTY(EngineRegistry *installs READ installs WRITE setInstalls NOTIFY installsChanged)
     Q_PROPERTY(bool creating READ creating NOTIFY creatingChanged)
+    Q_PROPERTY(bool removing READ removing NOTIFY removingChanged)
 
 public:
     enum Roles {
@@ -71,9 +72,19 @@ public:
     // one the project file names, or the default install when it names none. A failure is reported through errorOccurred.
     Q_INVOKABLE void addExisting(const QString &folder);
 
+    // Deletes the project's folder in the background, then takes the project out of the list. The folder is deleted only
+    // when InstallRules::isSafeToRemove allows it, and a folder that is already gone just leaves the list. A refused or
+    // failed delete keeps the project listed, and errorOccurred says why. Refused while a project is being created and
+    // while another folder is being deleted. Remove from list does not touch the folder.
+    Q_INVOKABLE void removeWithFolder(const QString &path);
+
+    // True while a project's folder is being deleted. Only one folder is deleted at a time.
+    bool removing() const;
+
 signals:
     void installsChanged();
     void creatingChanged();
+    void removingChanged();
     void created(const QString &path);
     // A user action failed, and the window tells the user why. The title and message are for display.
     void errorOccurred(const QString &title, const QString &message);
@@ -87,6 +98,14 @@ private:
         bool pinned = false;
     };
 
+    // What a delete of a project's folder did. Only Removed leaves no folder behind. Unsafe is decided before anything is
+    // deleted, so the folder is untouched. Failed can stop part way, so some files may be gone.
+    enum class RemoveResult {
+        Removed,
+        Unsafe,
+        Failed
+    };
+
     void loadProjects();
     void saveProjects();
     void insertProject(const Project &project);
@@ -94,8 +113,11 @@ private:
     void refreshInstalled();
     void setCreating(bool creating);
     void finishCreate(const Project &project);
+    void finishRemoveWithFolder(const QString &path, RemoveResult result);
 
     QList<Project> m_projects;
+    // The folder being deleted, or empty when no delete runs. open() refuses that project while it is set.
+    QString m_removingPath;
     // Owned only when the default constructor was used. m_settings points at it, or at the settings a test passed in.
     std::unique_ptr<QSettings> m_ownedSettings;
     QSettings *m_settings = nullptr;

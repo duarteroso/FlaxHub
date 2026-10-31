@@ -21,6 +21,19 @@ bool isFixable(const InstallTable::Install &install)
     return !install.pathMissing || QFileInfo(install.path).absoluteDir().exists();
 }
 
+// The reason a folder was kept, as the user reads it. Removed has no reason, since nothing was kept.
+QString keptReason(InstallFolderJobs::RemoveResult result)
+{
+    switch (result) {
+    case InstallFolderJobs::RemoveResult::NotOwned: return qtTrId("main.installlistmodel.not_owned");
+    case InstallFolderJobs::RemoveResult::UnsafePath: return qtTrId("main.installlistmodel.unsafe_path");
+    case InstallFolderJobs::RemoveResult::DeleteFailed: return qtTrId("main.installlistmodel.delete_failed");
+    case InstallFolderJobs::RemoveResult::Removed: break;
+    }
+
+    return {};
+}
+
 } // namespace
 
 InstallListModel::InstallListModel(QObject *parent)
@@ -236,35 +249,41 @@ void InstallListModel::uninstall(const QString &version)
 
     const QString path = m_table->at(row).path;
     const bool wasInvalid = state == Invalid;
-    m_jobs.removeInstall(version, path, [this, version, path, wasInvalid](const QString &problem) {
-        finishUninstall(version, path, problem, wasInvalid);
-    });
+    m_jobs.removeInstall(version, path, wasInvalid,
+                         [this, version, path, wasInvalid](InstallFolderJobs::RemoveResult result) {
+                             finishUninstall(version, path, result, wasInvalid);
+                         });
 }
 
-// The delete has finished. A removed folder takes its entry out of the Installs view, which is the same as
-// the entry going back to Available. A folder that was kept is Invalid with the reason, so the user can see
-// the problem and try again. An entry that was already Invalid is dropped even when its folder was kept, since the
-// user asked to remove it from the list, and the notice says the folder stays on disk.
-void InstallListModel::finishUninstall(const QString &version, const QString &path, const QString &problem,
-                                       bool wasInvalid)
+// The delete has finished. A removed folder takes its entry out of the Installs view, which is the same as the entry
+// going back to Available. A folder that was kept makes the entry Invalid with the reason, so the user can see the
+// problem and try again. An Invalid entry whose folder was kept stays Invalid with the problem it had, since that
+// problem is still why the folder is Invalid, and a notice says why the removal did not happen.
+void InstallListModel::finishUninstall(const QString &version, const QString &path,
+                                       InstallFolderJobs::RemoveResult result, bool wasInvalid)
 {
     const int row = m_table->rowFor(version);
     if (row < 0 || m_table->at(row).state != Removing)
         return;
 
-    if (problem.isEmpty()) {
+    if (result == InstallFolderJobs::RemoveResult::Removed) {
         m_table->resetToAvailable(row);
         notifyStateChanged(row);
-    } else if (wasInvalid) {
-        m_table->resetToAvailable(row);
-        notifyStateChanged(row);
-        emit errorOccurred(qtTrId("main.installlistmodel.removed_title"),
-                           qtTrId("main.installlistmodel.removed")
-                               .arg(version, collapseHome(path), problem));
-    } else {
-        m_table->setKept(row, problem);
-        notifyStateChanged(row);
+        return;
     }
+
+    const QString reason = keptReason(result);
+    if (wasInvalid) {
+        m_table->restoreInvalid(row);
+        notifyStateChanged(row);
+        emit errorOccurred(qtTrId("main.installlistmodel.remove_title"),
+                           qtTrId("main.installlistmodel.remove_kept")
+                               .arg(version, collapseHome(path), reason));
+        return;
+    }
+
+    m_table->setKept(row, reason);
+    notifyStateChanged(row);
 }
 
 // Only a folder that FlaxHub created can be located: it must hold the marker that the clone wrote. Any other folder is

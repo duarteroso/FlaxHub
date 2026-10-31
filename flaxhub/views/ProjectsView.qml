@@ -17,6 +17,8 @@ Rectangle {
 
     signal installRequested(string version)
     signal newProjectRequested()
+    // The owner asks the user before the project's folder is deleted.
+    signal removeFolderRequested(string name, string path)
 
     color: Theme.windowBg
 
@@ -249,6 +251,13 @@ Rectangle {
                             const path = row.path;
                             Qt.callLater(() => root.projects.remove(path));
                         }
+                    }
+
+                    MenuItem {
+                        text: qsTrId("main.projectsview.remove_folder")
+                        // Deletes the project's folder, so the item is red, as the engine delete is on the Installs view.
+                        palette.windowText: Theme.danger
+                        onTriggered: root.removeFolderRequested(row.name, row.path)
                     }
                 }
             }

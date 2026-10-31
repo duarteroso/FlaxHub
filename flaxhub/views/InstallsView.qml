@@ -14,7 +14,8 @@ Rectangle {
     required property AppSettings prefs
 
     signal addVersionRequested()
-    signal uninstallRequested(string version, string path)
+    // `invalid` is true for an Invalid entry, which is removed from the list and whose folder is deleted only when allowed.
+    signal uninstallRequested(string version, string path, bool invalid)
     // Emitted once an install or a Fix has a step running, so the progress dialog can show it.
     signal installStarted(string version, string path)
 
@@ -264,18 +265,10 @@ Rectangle {
                         MenuItem {
                             text: row.installState === InstallListModel.Invalid ? qsTrId("main.installsview.remove_from_list") : qsTrId("main.installsview.uninstall")
                             enabled: row.canUninstall
-                            onTriggered: {
-                                // Only an Invalid entry is removed without the dialog, since its folder is not deleted.
-                                if (row.installState !== InstallListModel.Invalid) {
-                                    root.uninstallRequested(row.version, row.path);
-                                    return;
-                                }
-
-                                // Deferred: removing an invalid entry takes this row out of the list and destroys it,
-                                // so the call waits until this menu's handler has finished.
-                                const version = row.version;
-                                Qt.callLater(() => root.installs.uninstall(version));
-                            }
+                            // Uninstall and Remove from list both delete the engine's folder, so the item is red. Disabled, it stays grey.
+                            palette.windowText: Theme.danger
+                            palette.disabled.windowText: Theme.textMuted
+                            onTriggered: root.uninstallRequested(row.version, row.path, row.installState === InstallListModel.Invalid)
                         }
                     }
                 }

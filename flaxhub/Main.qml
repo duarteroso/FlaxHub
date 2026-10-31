@@ -23,7 +23,7 @@ ApplicationWindow {
     // Quitting cancels a running install, stops a project being created and cuts a folder delete or check short, so ask
     // first. Keep working leaves the window open.
     onClosing: (close) => {
-        if ((installModel.busy || installModel.removing() || projectModel.creating) && !quitConfirmed) {
+        if ((installModel.busy || installModel.removing() || projectModel.creating || projectModel.removing) && !quitConfirmed) {
             close.accepted = false;
             quitDialog.open();
         }
@@ -137,13 +137,20 @@ ApplicationWindow {
                 prefs: AppSettings
                 onInstallRequested: (version) => addInstallDialog.openFor(version)
                 onNewProjectRequested: newProjectDialog.openFor()
+                onRemoveFolderRequested: (name, path) => {
+                    removeFolderDialog.projectName = name;
+                    removeFolderDialog.openFor("", path);
+                }
             }
 
             InstallsView {
                 installs: installModel
                 prefs: AppSettings
                 onAddVersionRequested: addInstallDialog.openFor("")
-                onUninstallRequested: (version, path) => uninstallDialog.openFor(version, path)
+                onUninstallRequested: (version, path, invalid) => {
+                    uninstallDialog.invalidEntry = invalid;
+                    uninstallDialog.openFor(version, path);
+                }
                 onInstallStarted: (version, path) => installProgressDialog.openFor(version, path)
             }
 
@@ -170,9 +177,18 @@ ApplicationWindow {
     ConfirmDialog {
         id: uninstallDialog
 
-        title: qsTrId("main.uninstalldialog.title")
-        question: qsTrId("main.uninstalldialog.question").arg(uninstallDialog.version)
-        confirmText: qsTrId("main.uninstalldialog.confirm")
+        // Set when the entry is Invalid. Its folder is deleted whatever it holds, and the entry leaves the list.
+        property bool invalidEntry: false
+
+        title: uninstallDialog.invalidEntry
+            ? qsTrId("main.uninstalldialog.title_invalid")
+            : qsTrId("main.uninstalldialog.title")
+        question: uninstallDialog.invalidEntry
+            ? qsTrId("main.uninstalldialog.question_invalid").arg(uninstallDialog.version)
+            : qsTrId("main.uninstalldialog.question").arg(uninstallDialog.version)
+        confirmText: uninstallDialog.invalidEntry
+            ? qsTrId("main.uninstalldialog.confirm_invalid")
+            : qsTrId("main.uninstalldialog.confirm")
 
         onConfirmed: (version) => installModel.uninstall(version)
     }
@@ -185,6 +201,19 @@ ApplicationWindow {
         confirmText: qsTrId("main.clearfolderdialog.confirm")
 
         onConfirmed: (version) => installModel.fix(version, true)
+    }
+
+    ConfirmDialog {
+        id: removeFolderDialog
+
+        // The project the question names. The Projects view sets it before the dialog opens.
+        property string projectName: ""
+
+        title: qsTrId("main.removefolderdialog.title")
+        question: qsTrId("main.removefolderdialog.question").arg(removeFolderDialog.projectName)
+        confirmText: qsTrId("main.removefolderdialog.confirm")
+
+        onConfirmed: (version, path) => projectModel.removeWithFolder(path)
     }
 
     NewProjectDialog {

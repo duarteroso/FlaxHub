@@ -48,7 +48,13 @@ bool isSafeToRemove(const QString &path)
     if (!QDir::isAbsolutePath(path))
         return false;
 
-    const QString folder = QFileInfo(path).canonicalFilePath();
+    // A link is refused, since a delete through it empties the folder it points to. The link check is made on the cleaned
+    // path, since a trailing "/" makes QFileInfo follow a link. A path that is not a folder is refused too.
+    const QFileInfo info(path);
+    if (QFileInfo(QDir::cleanPath(path)).isSymLink() || !info.isDir())
+        return false;
+
+    const QString folder = info.canonicalFilePath();
     if (folder.isEmpty() || isRootFolder(folder))
         return false;
 

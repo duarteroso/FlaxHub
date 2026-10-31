@@ -9,11 +9,13 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QFutureWatcher>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QProcess>
 #include <QSettings>
 #include <QStringList>
+#include <QtConcurrentRun>
 
 namespace {
 
@@ -221,6 +223,12 @@ void ProjectListModel::open(const QString &path, const QString &editorArguments)
     }
 
     Project &project = m_projects[row];
+    if (removing() && samePath(project.path, m_removingPath)) {
+        emit errorOccurred(qtTrId("main.projectlistmodel.open_title"),
+                           qtTrId("main.projectlistmodel.open_being_removed").arg(collapseHome(path)));
+        return;
+    }
+
     const QString editor = m_installs ? m_installs->editorExecutable(project.engineVersion) : QString();
     if (editor.isEmpty()) {
         emit errorOccurred(qtTrId("main.projectlistmodel.open_title"),
@@ -273,6 +281,12 @@ void ProjectListModel::create(const QString &folderName, const QString &location
 {
     if (m_creating)
         return;
+    // A folder being deleted may be the one the new project would go into, so the create waits for the delete.
+    if (removing()) {
+        emit errorOccurred(qtTrId("main.projectlistmodel.create_title"),
+                           qtTrId("main.projectlistmodel.remove_busy"));
+        return;
+    }
 
     const QString name = folderName.trimmed();
     if (sanitizedName(name).isEmpty()) {
@@ -381,6 +395,50 @@ void ProjectListModel::addExisting(const QString &folder)
     insertProject(project);
 }
 
+void ProjectListModel::removeWithFolder(const QString &path)
+{
+    const int row = rowFor(path);
+    if (row < 0)
+        return;
+
+    // A project being created may be written inside the folder removed here, so the removal waits for the create.
+    if (m_creating) {
+        emit errorOccurred(qtTrId("main.projectlistmodel.remove_title"),
+                           qtTrId("main.projectlistmodel.remove_creating"));
+        return;
+    }
+    if (removing()) {
+        emit errorOccurred(qtTrId("main.projectlistmodel.remove_title"),
+                           qtTrId("main.projectlistmodel.remove_busy"));
+        return;
+    }
+
+    // A project can hold thousands of files, so the checks and the delete run on a worker thread. The list keeps the
+    // project until the result arrives.
+    const QString folder = m_projects.at(row).path;
+    m_removingPath = folder;
+    emit removingChanged();
+
+    auto *watcher = new QFutureWatcher<RemoveResult>(this);
+    connect(watcher, &QFutureWatcher<RemoveResult>::finished, this, [this, watcher, folder]() {
+        watcher->deleteLater();
+        finishRemoveWithFolder(folder, watcher->result());
+    });
+    watcher->setFuture(QtConcurrent::run([folder]() {
+        // A folder that is already gone counts as removed. The safety check runs here, just before the delete.
+        if (!QFileInfo::exists(folder))
+            return RemoveResult::Removed;
+        if (!InstallRules::isSafeToRemove(folder))
+            return RemoveResult::Unsafe;
+        return QDir(folder).removeRecursively() ? RemoveResult::Removed : RemoveResult::Failed;
+    }));
+}
+
+bool ProjectListModel::removing() const
+{
+    return !m_removingPath.isEmpty();
+}
+
 void ProjectListModel::setCreating(bool creating)
 {
     if (m_creating == creating)
@@ -388,6 +446,38 @@ void ProjectListModel::setCreating(bool creating)
 
     m_creating = creating;
     emit creatingChanged();
+}
+
+// The delete has finished. A folder that is gone takes its project out of the list, and the list is saved. A refused or
+// failed delete keeps the project listed, and a notice says why.
+void ProjectListModel::finishRemoveWithFolder(const QString &path, RemoveResult result)
+{
+    m_removingPath.clear();
+    emit removingChanged();
+
+    switch (result) {
+    case RemoveResult::Removed: {
+        // Rows move when a project is added, so the row is looked up again. A project removed from the list meanwhile
+        // has nothing left to take out.
+        const int row = rowFor(path);
+        if (row < 0)
+            return;
+
+        beginRemoveRows(QModelIndex(), row, row);
+        m_projects.removeAt(row);
+        endRemoveRows();
+        saveProjects();
+        return;
+    }
+    case RemoveResult::Unsafe:
+        emit errorOccurred(qtTrId("main.projectlistmodel.remove_title"),
+                           qtTrId("main.projectlistmodel.remove_unsafe").arg(collapseHome(path)));
+        return;
+    case RemoveResult::Failed:
+        emit errorOccurred(qtTrId("main.projectlistmodel.remove_title"),
+                           qtTrId("main.projectlistmodel.remove_failed").arg(collapseHome(path)));
+        return;
+    }
 }
 
 void ProjectListModel::finishCreate(const Project &project)

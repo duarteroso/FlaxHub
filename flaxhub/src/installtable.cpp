@@ -257,6 +257,11 @@ void InstallTable::setKept(int row, const QString &problem)
     install.problem = problem;
 }
 
+void InstallTable::restoreInvalid(int row)
+{
+    m_installs[row].state = InstallListModel::Invalid;
+}
+
 void InstallTable::resetToAvailable(int row)
 {
     Install &install = m_installs[row];

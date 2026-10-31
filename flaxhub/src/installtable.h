@@ -91,6 +91,8 @@ public:
     void setRemoving(int row);
     // The folder was kept on uninstall, so the install is Invalid with the reason.
     void setKept(int row, const QString &problem);
+    // An Invalid install whose removal was refused is Invalid again, with the problem it had before.
+    void restoreInvalid(int row);
     // Clears an install back to Available, as if it had never been installed. The version stays in the list, so it
     // can be installed again.
     void resetToAvailable(int row);

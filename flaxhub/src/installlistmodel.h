@@ -136,9 +136,11 @@ public:
     // installed, the path is not a full path, or the folder is not free. Each refusal is reported through errorOccurred.
     Q_INVOKABLE bool startInstall(const QString &version, const QString &path);
     // Deletes an installed or failed engine's folder in the background, but only when the Hub made it or it is still a
-    // complete checkout (see InstallRules::mayUninstall). Otherwise the entry becomes Invalid with the reason. An Invalid
-    // entry is removed from the list, and its folder is deleted under the same rule. A folder that is kept stays on disk,
-    // and errorOccurred says so.
+    // complete checkout (see InstallRules::mayUninstall). Otherwise the entry becomes Invalid with the reason. An
+    // Invalid entry is removed from the list by deleting its folder whatever it holds, since only FlaxHub creates
+    // entries. Every delete still passes InstallRules::isSafeToRemove. If the folder is kept or the delete fails, the
+    // Invalid entry stays listed with its problem, and errorOccurred says why. A folder that is already gone just
+    // leaves the list.
     Q_INVOKABLE void uninstall(const QString &version);
     // Points an Invalid install whose folder was not found at the folder the user located. Only a folder with the FlaxHub
     // marker is accepted, so a folder FlaxHub did not create is refused. The folder is checked like one loaded at
@@ -174,7 +176,8 @@ private:
     void saveInstalls();
     void notifyStateChanged(int row);
     void updateBusy();
-    void finishUninstall(const QString &version, const QString &path, const QString &problem, bool wasInvalid);
+    void finishUninstall(const QString &version, const QString &path, InstallFolderJobs::RemoveResult result,
+                         bool wasInvalid);
     void decideFix(const QString &version, const QList<Failure> &failures, bool clearConfirmed);
 
     void appendLog(const QString &version, const QString &text);

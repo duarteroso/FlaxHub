@@ -45,6 +45,7 @@ private slots:
     void safeToRemoveRefusesHome();
     void safeToRemoveRefusesFoldersAboveHome();
     void safeToRemoveRefusesSymlinkToHome();
+    void safeToRemoveRefusesLinksAndFiles();
     void safeToRemoveRefusesMissingFolder();
     void safeToRemoveAllowsInstallFolder();
     void safeToRemoveAllowsDocumentsFolder();
@@ -144,6 +145,28 @@ void InstallRulesTest::safeToRemoveRefusesSymlinkToHome()
     QVERIFY(!InstallRules::isSafeToRemove(link));
 }
 
+// A link is refused even when it points to a folder that is not home, since a delete through it would empty that folder.
+// A file is refused too, since an install is a folder.
+void InstallRulesTest::safeToRemoveRefusesLinksAndFiles()
+{
+    const QString folder = m_root.filePath("linked-target");
+    QVERIFY(QDir().mkpath(folder));
+    QVERIFY(InstallRules::isSafeToRemove(folder));
+
+    const QString link = m_root.filePath("link-to-target");
+    if (!QFile::link(folder, link))
+        QSKIP("Could not create a symbolic link");
+    QVERIFY(!InstallRules::isSafeToRemove(link));
+    // A trailing separator makes QFileInfo follow the link, so it is refused as well.
+    QVERIFY(!InstallRules::isSafeToRemove(link + QLatin1Char('/')));
+
+    const QString file = m_root.filePath("plain.txt");
+    QFile plain(file);
+    QVERIFY(plain.open(QIODevice::WriteOnly));
+    plain.close();
+    QVERIFY(!InstallRules::isSafeToRemove(file));
+}
+
 // A path that does not resolve is refused, so there is nothing to remove.
 void InstallRulesTest::safeToRemoveRefusesMissingFolder()
 {
@@ -155,8 +178,8 @@ void InstallRulesTest::safeToRemoveAllowsInstallFolder()
     QVERIFY(InstallRules::isSafeToRemove(QDir(m_home).filePath("FlaxHub/Engines/1.10")));
 }
 
-// isSafeToRemove refuses only roots, home and its ancestors. A folder like this one passes it, and mayUninstall, which
-// also needs the Hub's marker or a complete checkout, refuses it (see mayUninstallRefusesOtherFolders).
+// isSafeToRemove refuses roots, home, its ancestors, links and files. A folder like this one passes it, and mayUninstall,
+// which also needs the Hub's marker or a complete checkout, refuses it (see mayUninstallRefusesOtherFolders).
 void InstallRulesTest::safeToRemoveAllowsDocumentsFolder()
 {
     QVERIFY(InstallRules::isSafeToRemove(QDir(m_home).filePath("Documents")));
@@ -281,7 +304,8 @@ void InstallRulesTest::mayUninstallAllowsCompleteCheckout()
     QVERIFY(!InstallRules::mayUninstall(folder, false));
 }
 
-// Folders the Hub did not make and that are not complete checkouts are kept, whether they hold files or not.
+// Folders the Hub did not make and that are not complete checkouts are kept by an Installed or Failed entry, whether they
+// hold files or not. An Invalid entry's folder is deleted under isSafeToRemove alone, so it does not use mayUninstall.
 void InstallRulesTest::mayUninstallRefusesOtherFolders()
 {
     const QString documents = QDir(m_home).filePath("Documents/Notes");

@@ -155,6 +155,8 @@ private slots:
     void uninstallRemovesLocatedCheckout();
     void uninstallKeepsFolderThatIsNoLongerACheckout();
     void uninstallRemovesMarkedFolderOfInvalidInstall();
+    void uninstallRemovesUnmarkedFolderOfInvalidInstall();
+    void uninstallRefusesUnsafeInvalidFolder();
     void fixAsksBeforeClearingFolderWithFiles();
     void logReplacesProgressLineAcrossChunks();
 
@@ -519,8 +521,9 @@ void InstallListModelTest::uninstallRemovesLocatedCheckout()
     QVERIFY(!QFileInfo::exists(engine));
 }
 
-// An installed folder that stops being a checkout is not deleted: the folder may hold files the Hub does not own. The
-// entry becomes Invalid with the reason, and the folder stays.
+// An installed folder that stops being a checkout is not deleted by its first Uninstall: the folder may hold files the Hub
+// does not own. The entry becomes Invalid with the reason, and the folder stays. The second Uninstall deletes it, since
+// an Invalid entry's folder is deleted whatever it holds.
 void InstallListModelTest::uninstallKeepsFolderThatIsNoLongerACheckout()
 {
     if (!checkoutTestsSupported())
@@ -544,10 +547,14 @@ void InstallListModelTest::uninstallKeepsFolderThatIsNoLongerACheckout()
     QVERIFY(QFileInfo::exists(engine));
     QVERIFY(model.data(model.index(0), InstallListModel::ProblemRole).toString().contains(
         QStringLiteral("not a complete FlaxEngine checkout")));
+
+    model.uninstall(QStringLiteral("1.10"));
+    QTRY_COMPARE_WITH_TIMEOUT(stateOf(model, QStringLiteral("1.10")), InstallListModel::Available, 10000);
+    QTRY_VERIFY_WITH_TIMEOUT(!QFileInfo::exists(engine), 10000);
 }
 
-// An Invalid install whose folder has the marker is FlaxHub's own folder, so Uninstall deletes it. The folder holds the
-// marker and one file, and is not a checkout, so no git is needed.
+// An Invalid install whose folder has the marker is deleted with its marker and its files. The folder holds the marker
+// and one file, and is not a checkout, so no git is needed.
 void InstallListModelTest::uninstallRemovesMarkedFolderOfInvalidInstall()
 {
     QTemporaryDir root;
@@ -565,6 +572,56 @@ void InstallListModelTest::uninstallRemovesMarkedFolderOfInvalidInstall()
     model.uninstall(QStringLiteral("1.10"));
     QTRY_COMPARE_WITH_TIMEOUT(stateOf(model, QStringLiteral("1.10")), InstallListModel::Available, 10000);
     QTRY_VERIFY_WITH_TIMEOUT(!QFileInfo::exists(folder), 10000);
+}
+
+// An Invalid install is one FlaxHub listed, so Uninstall deletes its folder even without the marker. The folder holds one
+// file and is not a checkout, so no git is needed. The entry goes back to Available, and no notice is shown.
+void InstallListModelTest::uninstallRemovesUnmarkedFolderOfInvalidInstall()
+{
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    const QString folder = root.filePath("unmarked");
+    QVERIFY(writeFile(QDir(folder).filePath("leftover.txt"), "x"));
+
+    const QString file = root.filePath("installs.ini");
+    QSettings settings(file, QSettings::IniFormat);
+    writeInstalls(settings, {{QStringLiteral("1.10"), folder, false}});
+    InstallListModel model(&settings);
+    QTRY_COMPARE_WITH_TIMEOUT(stateOf(model, QStringLiteral("1.10")), InstallListModel::Invalid, 10000);
+
+    QSignalSpy errors(&model, &InstallListModel::errorOccurred);
+    model.uninstall(QStringLiteral("1.10"));
+    QTRY_COMPARE_WITH_TIMEOUT(stateOf(model, QStringLiteral("1.10")), InstallListModel::Available, 10000);
+    QTRY_VERIFY_WITH_TIMEOUT(!QFileInfo::exists(folder), 10000);
+    QCOMPARE(errors.count(), 0);
+}
+
+// The home folder is never deleted, even for an Invalid entry. isSafeToRemove refuses it, so the entry stays Invalid, a
+// notice says the folder was not deleted, and the home folder is still there afterwards. The entry names the home folder
+// the tests run with, which is a temporary folder.
+void InstallListModelTest::uninstallRefusesUnsafeInvalidFolder()
+{
+    const QString home = m_home.path();
+    QVERIFY(QFileInfo::exists(home));
+
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    const QString file = root.filePath("installs.ini");
+    QSettings settings(file, QSettings::IniFormat);
+    writeInstalls(settings, {{QStringLiteral("1.10"), home, false}});
+    InstallListModel model(&settings);
+    QTRY_COMPARE_WITH_TIMEOUT(stateOf(model, QStringLiteral("1.10")), InstallListModel::Invalid, 10000);
+
+    QSignalSpy errors(&model, &InstallListModel::errorOccurred);
+    model.uninstall(QStringLiteral("1.10"));
+    QTRY_COMPARE_WITH_TIMEOUT(errors.count(), 1, 10000);
+    QCOMPARE(errors.first().at(0).toString(), QStringLiteral("Could not remove engine"));
+    QVERIFY(errors.first().at(1).toString().contains(QStringLiteral("stays in the list")));
+
+    QCOMPARE(stateOf(model, QStringLiteral("1.10")), InstallListModel::Invalid);
+    QCOMPARE(model.rowCount(), 1);
+    QCOMPARE(model.data(model.index(0), InstallListModel::PathRole).toString(), home);
+    QVERIFY(QFileInfo::exists(home));
 }
 
 // Fix on a folder that has files but is not a checkout asks first. Nothing is cleared until the user confirms.

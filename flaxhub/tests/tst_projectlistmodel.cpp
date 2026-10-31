@@ -7,6 +7,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QProcess>
+#include <QScopeGuard>
 #include <QSettings>
 #include <QSignalSpy>
 #include <QStandardPaths>
@@ -26,18 +27,36 @@ bool checksFinished(const InstallListModel &model)
     return true;
 }
 
+// Writes the .flaxproj that makes folder a project, naming the engine version. Returns false when it cannot be written.
+bool writeProjectFile(const QString &folder, const QString &engineVersion)
+{
+    QFile project(folder + QStringLiteral("/MyGame.flaxproj"));
+    if (!project.open(QIODevice::WriteOnly))
+        return false;
+
+    return project.write(QStringLiteral("{\"MinEngineVersion\": \"%1\"}").arg(engineVersion).toUtf8()) >= 0;
+}
+
 // Writes a project folder that holds a .flaxproj naming the engine version, and returns the folder's path. The path
 // is empty when the file cannot be written.
 QString makeProjectFolder(const QTemporaryDir &root, const QString &name, const QString &engineVersion)
 {
     const QString folder = root.filePath(name);
     QDir().mkpath(folder);
-    QFile project(folder + QStringLiteral("/MyGame.flaxproj"));
-    if (!project.open(QIODevice::WriteOnly))
+    if (!writeProjectFile(folder, engineVersion))
         return {};
 
-    project.write(QStringLiteral("{\"MinEngineVersion\": \"%1\"}").arg(engineVersion).toUtf8());
     return folder;
+}
+
+// Writes a file with some text in it, and returns whether it was written.
+bool writeFile(const QString &path)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::WriteOnly))
+        return false;
+
+    return file.write("data") == 4;
 }
 
 // The fake editor records its arguments, one per line, in @ARGV@ and then acts as the editor does for -new. A project
@@ -170,6 +189,11 @@ private slots:
     void createAddsProjectOnceAndRejectsDuplicates();
     void createRemovesFolderOfFailedRun();
     void createReportsEditorThatCannotStart();
+    void removeWithFolderDeletesFolderAndEntry();
+    void removeWithFolderDropsEntryWhenFolderIsGone();
+    void removeWithFolderKeepsEntryWhenDeleteFails();
+    void removeWithFolderKeepsEntryWhenPathIsUnsafe();
+    void removeWithFolderWaitsForCreateAndOtherRemoval();
 
 private:
     QTemporaryDir m_home;
@@ -180,17 +204,20 @@ private:
     bool m_hadUserProfile = false;
 };
 
-// HOME points at a temporary folder for the whole run, so git never reads the user's configuration.
+// HOME points at a folder inside a temporary one for the whole run, so git never reads the user's configuration. The
+// temporary folder holds the home folder, which lets a test name a folder that FlaxHub must not delete.
 void ProjectListModelTest::initTestCase()
 {
     QVERIFY(m_home.isValid());
     QVERIFY(installEnglishCatalogue(m_translator));
+    const QString home = m_home.filePath(QStringLiteral("home"));
+    QVERIFY(QDir().mkpath(home));
     m_hadHome = qEnvironmentVariableIsSet("HOME");
     m_savedHome = qgetenv("HOME");
     m_hadUserProfile = qEnvironmentVariableIsSet("USERPROFILE");
     m_savedUserProfile = qgetenv("USERPROFILE");
-    qputenv("HOME", m_home.path().toLocal8Bit());
-    qputenv("USERPROFILE", m_home.path().toLocal8Bit());
+    qputenv("HOME", home.toLocal8Bit());
+    qputenv("USERPROFILE", home.toLocal8Bit());
 }
 
 void ProjectListModelTest::cleanupTestCase()
@@ -549,6 +576,243 @@ void ProjectListModelTest::createReportsEditorThatCannotStart()
     QVERIFY(!model.creating());
     QCOMPARE(model.rowCount(), 0);
     QVERIFY(!QFileInfo::exists(location + QStringLiteral("/Game")));
+}
+
+// Removing a project deletes its folder with everything in it, and the project leaves the list once the delete is done.
+// While the delete runs, the project cannot be opened, since its folder is going away.
+void ProjectListModelTest::removeWithFolderDeletesFolderAndEntry()
+{
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    const QString folder = makeProjectFolder(root, QStringLiteral("Game"), QStringLiteral("1.10"));
+    QVERIFY(!folder.isEmpty());
+    QVERIFY(QDir().mkpath(folder + QStringLiteral("/Content/Textures")));
+    QVERIFY(writeFile(folder + QStringLiteral("/Content/Textures/grass.png")));
+    const QString path = QFileInfo(folder).canonicalFilePath();
+    const QString file = root.filePath("projects.ini");
+
+    QSettings settings(file, QSettings::IniFormat);
+    ProjectListModel model(&settings);
+    model.addExisting(folder);
+    QCOMPARE(model.rowCount(), 1);
+    QSignalSpy errors(&model, &ProjectListModel::errorOccurred);
+    QSignalSpy removingChanges(&model, &ProjectListModel::removingChanged);
+
+    model.removeWithFolder(path);
+    QVERIFY(model.removing());
+    QCOMPARE(removingChanges.count(), 1);
+    QCOMPARE(model.rowCount(), 1);
+
+    model.open(path, QString());
+    QCOMPARE(errors.count(), 1);
+    QCOMPARE(errors.at(0).at(1).toString(), QStringLiteral("%1 is being deleted, so the project cannot be opened.").arg(path));
+
+    QTRY_VERIFY_WITH_TIMEOUT(!model.removing(), 10000);
+    QCOMPARE(removingChanges.count(), 2);
+    QCOMPARE(model.rowCount(), 0);
+    QCOMPARE(errors.count(), 1);
+    QVERIFY(!QFileInfo::exists(folder));
+
+    // The list is saved without the project.
+    QSettings reread(file, QSettings::IniFormat);
+    ProjectListModel reopened(&reread);
+    QCOMPARE(reopened.rowCount(), 0);
+}
+
+// A project whose folder is already gone just leaves the list. Nothing is deleted and nothing is reported.
+void ProjectListModelTest::removeWithFolderDropsEntryWhenFolderIsGone()
+{
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    const QString folder = makeProjectFolder(root, QStringLiteral("Game"), QStringLiteral("1.10"));
+    QVERIFY(!folder.isEmpty());
+    const QString path = QFileInfo(folder).canonicalFilePath();
+
+    QSettings settings(root.filePath("projects.ini"), QSettings::IniFormat);
+    ProjectListModel model(&settings);
+    model.addExisting(folder);
+    QCOMPARE(model.rowCount(), 1);
+    QVERIFY(QDir(folder).removeRecursively());
+
+    QSignalSpy errors(&model, &ProjectListModel::errorOccurred);
+    model.removeWithFolder(path);
+    QTRY_VERIFY_WITH_TIMEOUT(!model.removing(), 10000);
+    QCOMPARE(model.rowCount(), 0);
+    QCOMPARE(errors.count(), 0);
+    QVERIFY(!QFileInfo::exists(folder));
+}
+
+// A delete that fails keeps the project listed, and the notice says some files may already be gone. Once the folder can
+// be written again, the same project is removed. Root can write to a read-only folder, so the test is skipped for it.
+void ProjectListModelTest::removeWithFolderKeepsEntryWhenDeleteFails()
+{
+#if defined(Q_OS_WIN)
+    QSKIP("A read-only folder on Windows still lets its files be deleted.");
+#endif
+
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    const QString folder = makeProjectFolder(root, QStringLiteral("Game"), QStringLiteral("1.10"));
+    QVERIFY(!folder.isEmpty());
+    const QString locked = folder + QStringLiteral("/Locked");
+    QVERIFY(QDir().mkpath(locked));
+    QVERIFY(writeFile(locked + QStringLiteral("/cache.bin")));
+    const QString path = QFileInfo(folder).canonicalFilePath();
+
+    // The files of a folder that cannot be written to cannot be deleted.
+    const QFile::Permissions writable = QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner;
+    QVERIFY(QFile::setPermissions(locked, QFile::ReadOwner | QFile::ExeOwner));
+    auto restorePermissions = qScopeGuard([&locked, writable]() {
+        QFile::setPermissions(locked, writable);
+    });
+    {
+        QFile probe(locked + QStringLiteral("/probe"));
+        const bool writeAllowed = probe.open(QIODevice::WriteOnly);
+        probe.close();
+        QFile::remove(locked + QStringLiteral("/probe"));
+        if (writeAllowed)
+            QSKIP("The folder can still be written, so its files can be deleted (running as root?).");
+    }
+
+    QSettings settings(root.filePath("projects.ini"), QSettings::IniFormat);
+    ProjectListModel model(&settings);
+    model.addExisting(folder);
+    QCOMPARE(model.rowCount(), 1);
+    QSignalSpy errors(&model, &ProjectListModel::errorOccurred);
+
+    model.removeWithFolder(path);
+    QTRY_VERIFY_WITH_TIMEOUT(!model.removing(), 10000);
+    QCOMPARE(model.rowCount(), 1);
+    QCOMPARE(errors.count(), 1);
+    QCOMPARE(errors.at(0).at(0).toString(), QStringLiteral("Could not remove project folder"));
+    QCOMPARE(errors.at(0).at(1).toString(),
+             QStringLiteral("The folder %1 could not be deleted, and some of its files may already be gone. The project stays in the list.")
+                 .arg(path));
+    QVERIFY(QFileInfo::exists(locked + QStringLiteral("/cache.bin")));
+
+    // With the folder writable again, the delete finishes and the project leaves the list.
+    QVERIFY(QFile::setPermissions(locked, writable));
+    model.removeWithFolder(path);
+    QTRY_VERIFY_WITH_TIMEOUT(!model.removing(), 10000);
+    QCOMPARE(model.rowCount(), 0);
+    QCOMPARE(errors.count(), 1);
+    QVERIFY(!QFileInfo::exists(folder));
+}
+
+// FlaxHub never deletes the home folder, a folder that holds it, or a path that is no longer a folder. Each of these is
+// refused, and the project stays listed with its folder untouched. A relative path names no listed project, so it does
+// nothing either.
+void ProjectListModelTest::removeWithFolderKeepsEntryWhenPathIsUnsafe()
+{
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    const QString plain = makeProjectFolder(root, QStringLiteral("Plain"), QStringLiteral("1.10"));
+    QVERIFY(!plain.isEmpty());
+
+    // HOME is a folder inside m_home (see initTestCase), so m_home holds the home folder. Both get a project file, so
+    // they can be added to the list.
+    const QString holder = m_home.path();
+    const QString home = QDir::homePath();
+    QVERIFY(writeProjectFile(holder, QStringLiteral("1.10")));
+    QVERIFY(writeProjectFile(home, QStringLiteral("1.10")));
+
+    QSettings settings(root.filePath("projects.ini"), QSettings::IniFormat);
+    ProjectListModel model(&settings);
+    model.addExisting(holder);
+    model.addExisting(home);
+    model.addExisting(plain);
+    QCOMPARE(model.rowCount(), 3);
+    QSignalSpy errors(&model, &ProjectListModel::errorOccurred);
+    const QString holderPath = QFileInfo(holder).canonicalFilePath();
+    const QString homePath = QFileInfo(home).canonicalFilePath();
+    const QString plainPath = QFileInfo(plain).canonicalFilePath();
+    const QString titleText = QStringLiteral("Could not remove project folder");
+    const QString unsafeText = QStringLiteral("FlaxHub will not delete %1, since it is not a folder it can delete, such as the home folder or a link. The project stays in the list.");
+
+    // The home folder is shown as "~".
+    model.removeWithFolder(homePath);
+    QTRY_VERIFY_WITH_TIMEOUT(!model.removing(), 10000);
+    QCOMPARE(errors.count(), 1);
+    QCOMPARE(errors.at(0).at(0).toString(), titleText);
+    QCOMPARE(errors.at(0).at(1).toString(), unsafeText.arg(QStringLiteral("~")));
+
+    model.removeWithFolder(holderPath);
+    QTRY_VERIFY_WITH_TIMEOUT(!model.removing(), 10000);
+    QCOMPARE(errors.count(), 2);
+    QCOMPARE(errors.at(1).at(1).toString(), unsafeText.arg(holderPath));
+
+    // A path that has become a file is refused, and the file is left alone.
+    QVERIFY(QDir(plain).removeRecursively());
+    QVERIFY(writeFile(plain));
+    model.removeWithFolder(plainPath);
+    QTRY_VERIFY_WITH_TIMEOUT(!model.removing(), 10000);
+    QCOMPARE(errors.count(), 3);
+    QCOMPARE(errors.at(2).at(1).toString(), unsafeText.arg(plainPath));
+    QVERIFY(QFileInfo(plainPath).isFile());
+
+    model.removeWithFolder(QStringLiteral("Plain"));
+    QVERIFY(!model.removing());
+    QCOMPARE(errors.count(), 3);
+    QCOMPARE(model.rowCount(), 3);
+    QVERIFY(QFileInfo::exists(holder + QStringLiteral("/MyGame.flaxproj")));
+    QVERIFY(QFileInfo::exists(home + QStringLiteral("/MyGame.flaxproj")));
+}
+
+// A folder is not deleted while a project is being created, since the new project may be inside it. A second delete
+// waits for the first one to finish, and it is refused rather than queued.
+void ProjectListModelTest::removeWithFolderWaitsForCreateAndOtherRemoval()
+{
+    if (!canMakeFakeEngine())
+        QSKIP("The fake engine needs git and a POSIX shell.");
+
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    const QString argvFile = root.filePath("argv.txt");
+    const QString engine = root.filePath("engine");
+    QVERIFY(writeFakeEngine(engine, QStringLiteral("1.10"), argvFile));
+    saveInstall(root.filePath("installs.ini"), QStringLiteral("1.10"), engine);
+
+    QSettings installSettings(root.filePath("installs.ini"), QSettings::IniFormat);
+    InstallListModel installs(&installSettings);
+    QTRY_VERIFY_WITH_TIMEOUT(installs.isInstalled(QStringLiteral("1.10")), 10000);
+
+    const QString oldFolder = makeProjectFolder(root, QStringLiteral("Old"), QStringLiteral("1.10"));
+    QVERIFY(!oldFolder.isEmpty());
+    const QString oldPath = QFileInfo(oldFolder).canonicalFilePath();
+
+    QSettings settings(root.filePath("projects.ini"), QSettings::IniFormat);
+    ProjectListModel model(&settings);
+    model.setInstalls(&installs);
+    model.addExisting(oldFolder);
+    QCOMPARE(model.rowCount(), 1);
+    QSignalSpy created(&model, &ProjectListModel::created);
+    QSignalSpy errors(&model, &ProjectListModel::errorOccurred);
+
+    model.create(QStringLiteral("New"), root.filePath("projects"), QStringLiteral("1.10"));
+    QVERIFY(model.creating());
+    model.removeWithFolder(oldPath);
+    QVERIFY(!model.removing());
+    QCOMPARE(errors.count(), 1);
+    QCOMPARE(errors.at(0).at(1).toString(),
+             QStringLiteral("A project is still being created, so no project folder can be removed yet. Try again once it is created."));
+    QVERIFY(created.wait(10000));
+    QVERIFY(!model.creating());
+    QCOMPARE(model.rowCount(), 2);
+    QVERIFY(QFileInfo::exists(oldPath + QStringLiteral("/MyGame.flaxproj")));
+
+    // One delete runs, so another one is refused until it finishes.
+    const QString newPath = created.at(0).at(0).toString();
+    model.removeWithFolder(oldPath);
+    QVERIFY(model.removing());
+    model.removeWithFolder(newPath);
+    QCOMPARE(errors.count(), 2);
+    QCOMPARE(errors.at(1).at(1).toString(),
+             QStringLiteral("Another project folder is being deleted. Wait until it is gone, then try again."));
+    QTRY_VERIFY_WITH_TIMEOUT(!model.removing(), 10000);
+    QCOMPARE(model.rowCount(), 1);
+    QCOMPARE(model.data(model.index(0), ProjectListModel::PathRole).toString(), newPath);
+    QVERIFY(!QFileInfo::exists(oldPath));
+    QVERIFY(QFileInfo::exists(newPath));
 }
 
 QTEST_MAIN(ProjectListModelTest)
