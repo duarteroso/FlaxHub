@@ -3,7 +3,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls.Basic
-import QtQuick.Dialogs
 import QtQml.Models
 import FlaxHub
 
@@ -18,9 +17,6 @@ Rectangle {
     signal uninstallRequested(string version, string path, bool invalid)
     // Emitted once an install or a Fix has a step running, so the progress dialog can show it.
     signal installStarted(string version, string path)
-
-    // The install that Locate folder… is for. The dialog is shared by every row, so it remembers the version.
-    property string relocatingVersion: ""
 
     color: Theme.windowBg
 
@@ -73,18 +69,6 @@ Rectangle {
                     || state === InstallListModel.Failed
                     || state === InstallListModel.Invalid;
             }
-        }
-    }
-
-    FolderDialog {
-        id: folderDialog
-
-        title: qsTrId("main.installsview.locate_title")
-        // A folder that is refused is reported by the model's errorOccurred.
-        onAccepted: {
-            const folder = FileManager.toLocalPath(selectedFolder);
-            if (folder !== "")
-                root.installs.relocate(root.relocatingVersion, folder);
         }
     }
 
@@ -149,7 +133,7 @@ Rectangle {
                 required property string log
                 required property real progress
                 required property real stepProgress
-                required property bool relocatable
+                required property bool pathMissing
                 required property bool fixable
                 required property bool installable
 
@@ -162,7 +146,6 @@ Rectangle {
                 readonly property bool canUninstall: installState === InstallListModel.Installed
                                                   || installState === InstallListModel.Failed
                                                   || installState === InstallListModel.Invalid
-                readonly property bool canLocate: row.relocatable
                 readonly property bool canFix: row.fixable
 
                 width: list.width
@@ -238,26 +221,20 @@ Rectangle {
                         onClicked: root.installs.fix(row.version, false)
                     }
 
-                    HubButton {
-                        visible: row.canLocate
-                        text: qsTrId("main.installsview.locate")
-                        primary: true
-                        onClicked: {
-                            root.relocatingVersion = row.version;
-                            folderDialog.currentFolder = FileManager.folderUrl(row.path);
-                            folderDialog.open();
-                        }
-                    }
-
+                    // A missing folder has only Fix and Remove, so its menu holds just Remove from list.
                     RowMenuButton {
                         MenuItem {
                             text: qsTrId("main.installsview.set_default")
+                            visible: !row.pathMissing
+                            height: visible ? implicitHeight : 0
                             enabled: row.installState === InstallListModel.Installed && !row.isDefault
                             onTriggered: root.installs.setDefault(row.version)
                         }
 
                         MenuItem {
                             text: FileManager.revealLabel
+                            visible: !row.pathMissing
+                            height: visible ? implicitHeight : 0
                             enabled: row.path !== ""
                             onTriggered: FileManager.reveal(row.path)
                         }

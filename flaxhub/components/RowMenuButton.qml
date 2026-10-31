@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls.Basic
 
 // The "more" button at the end of a row. Its children are the items of the menu it opens.
+// The menu keeps the space of a hidden item, so an item that can be hidden sets `height: visible ? implicitHeight : 0`.
 ToolButton {
     id: root
 

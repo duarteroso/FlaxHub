@@ -130,6 +130,43 @@ bool checkoutTestsSupported()
 #endif
 }
 
+// Sends GitHub's FlaxEngine remote to a local repository while it lives, so a clone never reaches the network. git reads
+// the rewrite from the GIT_CONFIG_* variables in its environment, which the models' git processes inherit. Destroying it
+// puts back the variables as they were.
+class RedirectedRemote
+{
+public:
+    explicit RedirectedRemote(const QString &repository)
+    {
+        const QString key = QStringLiteral("url.file://%1.insteadOf").arg(repository);
+        const QByteArray values[kCount] = {"1", key.toUtf8(), "https://github.com/FlaxEngine/FlaxEngine.git"};
+        for (int i = 0; i < kCount; ++i) {
+            m_wasSet[i] = qEnvironmentVariableIsSet(kNames[i]);
+            m_saved[i] = qgetenv(kNames[i]);
+            qputenv(kNames[i], values[i]);
+        }
+    }
+
+    ~RedirectedRemote()
+    {
+        for (int i = 0; i < kCount; ++i) {
+            if (m_wasSet[i])
+                qputenv(kNames[i], m_saved[i]);
+            else
+                qunsetenv(kNames[i]);
+        }
+    }
+
+    RedirectedRemote(const RedirectedRemote &) = delete;
+    RedirectedRemote &operator=(const RedirectedRemote &) = delete;
+
+private:
+    static constexpr int kCount = 3;
+    static constexpr const char *kNames[kCount] = {"GIT_CONFIG_COUNT", "GIT_CONFIG_KEY_0", "GIT_CONFIG_VALUE_0"};
+    bool m_wasSet[kCount] = {};
+    QByteArray m_saved[kCount];
+};
+
 } // namespace
 
 // The installs are saved in a temporary settings file, so the user's settings are not touched. The tests that need no
@@ -143,19 +180,16 @@ private slots:
     void initTestCase();
     void cleanupTestCase();
 
-    void relocateSavesTheNewFolder();
-    void relocateRefusesFolderWithoutMarker();
-    void relocateRefusesCompleteCheckoutWithoutMarker();
-    void relocateRefusesEmptyAndMissingFolder();
-    void relocateRefusesMarkedFolderThatIsNotACheckout();
     void checkingIsTrueWhileChecksRun();
     void refusesRelativePaths();
     void interruptedInstallIsKeptAcrossRestart();
     void failedFixIsKeptAndRetryNeedsFullPath();
-    void uninstallRemovesLocatedCheckout();
+    void fixClonesMissingFolderAgain();
+    void uninstallRemovesMarkedCheckout();
     void uninstallKeepsFolderThatIsNoLongerACheckout();
     void uninstallRemovesMarkedFolderOfInvalidInstall();
     void uninstallRemovesUnmarkedFolderOfInvalidInstall();
+    void uninstallRemovesMissingFolderOfInvalidInstall();
     void uninstallRefusesUnsafeInvalidFolder();
     void fixAsksBeforeClearingFolderWithFiles();
     void logReplacesProgressLineAcrossChunks();
@@ -195,165 +229,6 @@ void InstallListModelTest::cleanupTestCase()
         qunsetenv("USERPROFILE");
 }
 
-// A folder the user locates is saved, so the next run starts with it. The folder is a checkout FlaxHub made, marker included.
-void InstallListModelTest::relocateSavesTheNewFolder()
-{
-    if (!checkoutTestsSupported())
-        QSKIP("Needs git and a POSIX shell");
-
-    QTemporaryDir root;
-    QVERIFY(root.isValid());
-    const QString engine = root.filePath("engine");
-    QVERIFY(QDir().mkpath(engine));
-    QVERIFY(makeCheckout(engine, "#!/bin/sh\n", true));
-    QVERIFY(InstallRules::writeMarker(engine));
-
-    const QString file = root.filePath("installs.ini");
-    {
-        QSettings settings(file, QSettings::IniFormat);
-        writeInstalls(settings, {{QStringLiteral("1.10"), root.filePath("missing-1.10"), false}});
-    }
-
-    {
-        QSettings settings(file, QSettings::IniFormat);
-        InstallListModel model(&settings);
-        QTRY_VERIFY_WITH_TIMEOUT(checksFinished(model), 10000);
-
-        model.relocate(QStringLiteral("1.10"), engine);
-        QTRY_COMPARE_WITH_TIMEOUT(stateOf(model, QStringLiteral("1.10")), InstallListModel::Installed, 10000);
-        QCOMPARE(model.data(model.index(0), InstallListModel::PathRole).toString(), engine);
-    }
-
-    QSettings settings(file, QSettings::IniFormat);
-    InstallListModel reopened(&settings);
-    QTRY_VERIFY_WITH_TIMEOUT(checksFinished(reopened), 10000);
-    QCOMPARE(reopened.rowCount(), 1);
-    QCOMPARE(reopened.data(reopened.index(0), InstallListModel::PathRole).toString(), engine);
-}
-
-// A folder that FlaxHub did not create is refused even when it holds files. The refusal is immediate, so the install is
-// never Checking, and it is left as it was.
-void InstallListModelTest::relocateRefusesFolderWithoutMarker()
-{
-    QTemporaryDir root;
-    QVERIFY(root.isValid());
-    QVERIFY(QDir().mkpath(root.filePath("with-files")));
-    QFile readme(root.filePath("with-files/readme.txt"));
-    QVERIFY(readme.open(QIODevice::WriteOnly));
-    readme.close();
-
-    const QString file = root.filePath("installs.ini");
-    {
-        QSettings settings(file, QSettings::IniFormat);
-        writeInstalls(settings, {{QStringLiteral("1.10"), root.filePath("missing-1.10"), false}});
-    }
-
-    QSettings settings(file, QSettings::IniFormat);
-    InstallListModel model(&settings);
-    QTRY_VERIFY_WITH_TIMEOUT(checksFinished(model), 10000);
-
-    QSignalSpy errors(&model, &InstallListModel::errorOccurred);
-    model.relocate(QStringLiteral("1.10"), root.filePath("with-files"));
-    QCOMPARE(errors.count(), 1);
-    QCOMPARE(errors.first().at(0).toString(), QStringLiteral("Could not locate folder"));
-    QVERIFY(errors.first().at(1).toString().contains(QStringLiteral("not created by FlaxHub")));
-
-    QCOMPARE(stateOf(model, QStringLiteral("1.10")), InstallListModel::Invalid);
-    QCOMPARE(model.data(model.index(0), InstallListModel::PathRole).toString(), root.filePath("missing-1.10"));
-    QVERIFY(model.data(model.index(0), InstallListModel::RelocatableRole).toBool());
-}
-
-// A complete checkout of this engine is refused when FlaxHub did not create it, since Locate trusts only the marker.
-void InstallListModelTest::relocateRefusesCompleteCheckoutWithoutMarker()
-{
-    if (!checkoutTestsSupported())
-        QSKIP("Needs git and a POSIX shell");
-
-    QTemporaryDir root;
-    QVERIFY(root.isValid());
-    const QString engine = root.filePath("engine");
-    QVERIFY(QDir().mkpath(engine));
-    QVERIFY(makeCheckout(engine, "#!/bin/sh\n", true));
-
-    const QString file = root.filePath("installs.ini");
-    {
-        QSettings settings(file, QSettings::IniFormat);
-        writeInstalls(settings, {{QStringLiteral("1.10"), root.filePath("missing-1.10"), false}});
-    }
-
-    QSettings settings(file, QSettings::IniFormat);
-    InstallListModel model(&settings);
-    QTRY_VERIFY_WITH_TIMEOUT(checksFinished(model), 10000);
-
-    QSignalSpy errors(&model, &InstallListModel::errorOccurred);
-    model.relocate(QStringLiteral("1.10"), engine);
-    QCOMPARE(errors.count(), 1);
-    QVERIFY(errors.first().at(1).toString().contains(QStringLiteral("not created by FlaxHub")));
-
-    QCOMPARE(stateOf(model, QStringLiteral("1.10")), InstallListModel::Invalid);
-    QCOMPARE(model.data(model.index(0), InstallListModel::PathRole).toString(), root.filePath("missing-1.10"));
-}
-
-// An empty folder and a missing folder are refused too. Neither can hold the marker, so each is one refusal.
-void InstallListModelTest::relocateRefusesEmptyAndMissingFolder()
-{
-    QTemporaryDir root;
-    QVERIFY(root.isValid());
-    QVERIFY(QDir().mkpath(root.filePath("empty")));
-
-    const QString file = root.filePath("installs.ini");
-    {
-        QSettings settings(file, QSettings::IniFormat);
-        writeInstalls(settings, {{QStringLiteral("1.10"), root.filePath("missing-1.10"), false}});
-    }
-
-    QSettings settings(file, QSettings::IniFormat);
-    InstallListModel model(&settings);
-    QTRY_VERIFY_WITH_TIMEOUT(checksFinished(model), 10000);
-
-    QSignalSpy errors(&model, &InstallListModel::errorOccurred);
-    model.relocate(QStringLiteral("1.10"), root.filePath("empty"));
-    QCOMPARE(errors.count(), 1);
-    QVERIFY(errors.last().at(1).toString().contains(QStringLiteral("not created by FlaxHub")));
-
-    model.relocate(QStringLiteral("1.10"), root.filePath("never-made"));
-    QCOMPARE(errors.count(), 2);
-    QVERIFY(errors.last().at(1).toString().contains(QStringLiteral("not created by FlaxHub")));
-
-    QCOMPARE(stateOf(model, QStringLiteral("1.10")), InstallListModel::Invalid);
-    QCOMPARE(model.data(model.index(0), InstallListModel::PathRole).toString(), root.filePath("missing-1.10"));
-}
-
-// A folder with the marker that is not a checkout of this engine is refused, since Fix would clear it. The check runs
-// before the refusal, so the notice arrives after the install has been checked again. No git is needed.
-void InstallListModelTest::relocateRefusesMarkedFolderThatIsNotACheckout()
-{
-    QTemporaryDir root;
-    QVERIFY(root.isValid());
-    const QString marked = root.filePath("marked");
-    QVERIFY(QDir().mkpath(marked));
-    QVERIFY(InstallRules::writeMarker(marked));
-
-    const QString file = root.filePath("installs.ini");
-    {
-        QSettings settings(file, QSettings::IniFormat);
-        writeInstalls(settings, {{QStringLiteral("1.10"), root.filePath("missing-1.10"), false}});
-    }
-
-    QSettings settings(file, QSettings::IniFormat);
-    InstallListModel model(&settings);
-    QTRY_VERIFY_WITH_TIMEOUT(checksFinished(model), 10000);
-
-    QSignalSpy errors(&model, &InstallListModel::errorOccurred);
-    model.relocate(QStringLiteral("1.10"), marked);
-    QTRY_COMPARE_WITH_TIMEOUT(errors.count(), 1, 10000);
-    QCOMPARE(errors.first().at(0).toString(), QStringLiteral("Could not locate folder"));
-    QVERIFY(errors.first().at(1).toString().contains(QStringLiteral("was created by FlaxHub but is not")));
-
-    QCOMPARE(stateOf(model, QStringLiteral("1.10")), InstallListModel::Invalid);
-    QCOMPARE(model.data(model.index(0), InstallListModel::PathRole).toString(), root.filePath("missing-1.10"));
-}
-
 // The checks run on worker threads and their results are delivered by the event loop, so right after the model is
 // built they are still running.
 void InstallListModelTest::checkingIsTrueWhileChecksRun()
@@ -374,7 +249,7 @@ void InstallListModelTest::checkingIsTrueWhileChecksRun()
     QVERIFY(checksFinished(model));
 }
 
-// Relative paths are refused by the Locate and Add install paths, so no folder is chosen relative to the working folder.
+// Relative paths are refused by the Add install path, so no folder is chosen relative to the working folder.
 void InstallListModelTest::refusesRelativePaths()
 {
     QTemporaryDir root;
@@ -391,7 +266,7 @@ void InstallListModelTest::refusesRelativePaths()
     QTRY_VERIFY_WITH_TIMEOUT(checksFinished(model), 10000);
 
     QSignalSpy errors(&model, &InstallListModel::errorOccurred);
-    model.relocate(QStringLiteral("1.10"), QStringLiteral("relative/engine"));
+    QVERIFY(!model.startInstall(QStringLiteral("1.10"), QStringLiteral("relative/engine")));
     QCOMPARE(errors.count(), 1);
     QCOMPARE(stateOf(model, QStringLiteral("1.10")), InstallListModel::Invalid);
     QCOMPARE(model.data(model.index(0), InstallListModel::PathRole).toString(), root.filePath("missing-1.10"));
@@ -494,8 +369,43 @@ void InstallListModelTest::failedFixIsKeptAndRetryNeedsFullPath()
     QCOMPARE(stateOf(reopened, QStringLiteral("1.10")), InstallListModel::Invalid);
 }
 
-// A located checkout is Installed, and Uninstall deletes it through the marker that Locate requires.
-void InstallListModelTest::uninstallRemovesLocatedCheckout()
+// A missing folder is an Invalid install that Fix clones again. Its parent folder is missing too, and the clone creates
+// it. The clone comes from a local repository that holds the same tag, and that repository has the generate script and
+// the editor, so the fix ends Installed with the marker written.
+void InstallListModelTest::fixClonesMissingFolderAgain()
+{
+    if (!checkoutTestsSupported())
+        QSKIP("Needs git and a POSIX shell");
+
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    const QString remote = root.filePath("remote");
+    QVERIFY(QDir().mkpath(remote));
+    QVERIFY(writeFile(QDir(remote).filePath(InstallLayout::generateScriptName()), "#!/bin/sh\nexit 0\n", true));
+    QVERIFY(makeCheckout(remote, "#!/bin/sh\n", true));
+    const RedirectedRemote redirect(remote);
+
+    const QString engine = root.filePath("engines/1.10");
+    const QString file = root.filePath("installs.ini");
+    QSettings settings(file, QSettings::IniFormat);
+    writeInstalls(settings, {{QStringLiteral("1.10"), engine, false}});
+    InstallListModel model(&settings);
+    QTRY_VERIFY_WITH_TIMEOUT(checksFinished(model), 10000);
+
+    // The folder is missing, so the install is Invalid, and Fix is offered for it.
+    QCOMPARE(stateOf(model, QStringLiteral("1.10")), InstallListModel::Invalid);
+    QVERIFY(model.data(model.index(0), InstallListModel::PathMissingRole).toBool());
+    QVERIFY(model.data(model.index(0), InstallListModel::FixableRole).toBool());
+
+    model.fix(QStringLiteral("1.10"), false);
+    QTRY_COMPARE_WITH_TIMEOUT(stateOf(model, QStringLiteral("1.10")), InstallListModel::Installed, 30000);
+    QVERIFY(!model.data(model.index(0), InstallListModel::PathMissingRole).toBool());
+    QVERIFY(InstallRules::hasMarker(engine));
+    QVERIFY(QFileInfo::exists(QDir(engine).filePath(InstallLayout::editorRelativePath())));
+}
+
+// A checkout that is saved with its marker is Installed when it is loaded, and Uninstall deletes it through the marker.
+void InstallListModelTest::uninstallRemovesMarkedCheckout()
 {
     if (!checkoutTestsSupported())
         QSKIP("Needs git and a POSIX shell");
@@ -509,11 +419,8 @@ void InstallListModelTest::uninstallRemovesLocatedCheckout()
 
     const QString file = root.filePath("installs.ini");
     QSettings settings(file, QSettings::IniFormat);
-    writeInstalls(settings, {{QStringLiteral("1.10"), root.filePath("missing-1.10"), false}});
+    writeInstalls(settings, {{QStringLiteral("1.10"), engine, false}});
     InstallListModel model(&settings);
-    QTRY_VERIFY_WITH_TIMEOUT(checksFinished(model), 10000);
-
-    model.relocate(QStringLiteral("1.10"), engine);
     QTRY_COMPARE_WITH_TIMEOUT(stateOf(model, QStringLiteral("1.10")), InstallListModel::Installed, 10000);
 
     model.uninstall(QStringLiteral("1.10"));
@@ -594,6 +501,28 @@ void InstallListModelTest::uninstallRemovesUnmarkedFolderOfInvalidInstall()
     QTRY_COMPARE_WITH_TIMEOUT(stateOf(model, QStringLiteral("1.10")), InstallListModel::Available, 10000);
     QTRY_VERIFY_WITH_TIMEOUT(!QFileInfo::exists(folder), 10000);
     QCOMPARE(errors.count(), 0);
+}
+
+// An Invalid install whose folder is already gone is removed from the list without a notice. Nothing is created at its
+// path, since there is no folder to delete.
+void InstallListModelTest::uninstallRemovesMissingFolderOfInvalidInstall()
+{
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    const QString missing = root.filePath("gone/1.10");
+
+    const QString file = root.filePath("installs.ini");
+    QSettings settings(file, QSettings::IniFormat);
+    writeInstalls(settings, {{QStringLiteral("1.10"), missing, false}});
+    InstallListModel model(&settings);
+    QTRY_COMPARE_WITH_TIMEOUT(stateOf(model, QStringLiteral("1.10")), InstallListModel::Invalid, 10000);
+    QVERIFY(model.data(model.index(0), InstallListModel::PathMissingRole).toBool());
+
+    QSignalSpy errors(&model, &InstallListModel::errorOccurred);
+    model.uninstall(QStringLiteral("1.10"));
+    QTRY_COMPARE_WITH_TIMEOUT(stateOf(model, QStringLiteral("1.10")), InstallListModel::Available, 10000);
+    QCOMPARE(errors.count(), 0);
+    QVERIFY(!QFileInfo::exists(missing));
 }
 
 // The home folder is never deleted, even for an Invalid entry. isSafeToRemove refuses it, so the entry stays Invalid, a

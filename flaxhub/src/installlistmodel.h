@@ -39,8 +39,8 @@ public:
         Invalid,
         // The folder is being deleted. The entry leaves the list once the delete finishes.
         Removing,
-        // The folder is being checked: at startup, after the last step, or before a Fix or a Locate. The row shows it until
-        // the result arrives.
+        // The folder is being checked: at startup, after the last step, or before a Fix. The row shows it until the result
+        // arrives.
         Checking
     };
     Q_ENUM(InstallState)
@@ -76,7 +76,7 @@ public:
         StepProgressRole,
         InstallableRole,
         ProblemRole,
-        RelocatableRole,
+        PathMissingRole,
         FixableRole,
         AddableRole
     };
@@ -117,8 +117,8 @@ public:
     // True while a folder is being deleted. busy() leaves these out, but quitting still cuts a delete short.
     Q_INVOKABLE bool removing() const;
 
-    // True while a folder check runs: at startup, after the last step, or before a Fix or a Locate. busy() leaves these
-    // out, since a check writes nothing, but quitting still leaves one unfinished.
+    // True while a folder check runs: at startup, after the last step, or before a Fix. busy() leaves these out, since a
+    // check writes nothing, but quitting still leaves one unfinished.
     Q_INVOKABLE bool checking() const;
 
     // Lists the FlaxEngine release tags as Available installs. Only the first successful fetch
@@ -142,15 +142,10 @@ public:
     // Invalid entry stays listed with its problem, and errorOccurred says why. A folder that is already gone just
     // leaves the list.
     Q_INVOKABLE void uninstall(const QString &version);
-    // Points an Invalid install whose folder was not found at the folder the user located. Only a folder with the FlaxHub
-    // marker is accepted, so a folder FlaxHub did not create is refused. The folder is checked like one loaded at
-    // startup, so the install is Installed again if it passes, and Invalid with the new reason if not. A marked folder
-    // that is not a checkout of this engine is refused too. Each refusal is reported through errorOccurred, and the
-    // install stays as it was. So is a path that is not a full path.
-    Q_INVOKABLE void relocate(const QString &version, const QString &path);
-    // Re-checks an Invalid install and runs the steps its failed checks need. A folder that needs clearing is only
-    // cleared when clearConfirmed is set. Otherwise clearConfirmationRequired is emitted, and the view asks the user
-    // and calls fix again. fixStarted is emitted once a step is running.
+    // Re-checks an Invalid install and runs the steps its failed checks need. A missing folder is cloned again, which
+    // creates any missing parent folders too. A folder that needs clearing is only cleared when clearConfirmed is set.
+    // Otherwise clearConfirmationRequired is emitted, and the view asks the user and calls fix again. fixStarted is
+    // emitted once a step is running.
     Q_INVOKABLE void fix(const QString &version, bool clearConfirmed);
     Q_INVOKABLE void setDefault(const QString &version);
 

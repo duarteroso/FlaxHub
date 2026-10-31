@@ -289,11 +289,11 @@ void InstallRulesTest::mayUninstallAllowsFolderTheHubMade()
     QVERIFY(InstallRules::mayUninstall(folder, false));
 }
 
-// A located folder that passes the checkout check is deleted without a marker, since the Hub did not make it. The
-// rule takes the result of that check, so here it is given as true.
+// A complete checkout is deleted without a marker, even when the Hub did not make it. The rule takes the result of the
+// checkout check, so here it is given as true.
 void InstallRulesTest::mayUninstallAllowsCompleteCheckout()
 {
-    const QString folder = QDir(m_root.path()).filePath("located/engine");
+    const QString folder = QDir(m_root.path()).filePath("checkout/engine");
     QVERIFY(QDir().mkpath(folder));
     QFile readme(QDir(folder).filePath("readme.txt"));
     QVERIFY(readme.open(QIODevice::WriteOnly));

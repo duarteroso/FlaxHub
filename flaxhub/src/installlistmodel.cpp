@@ -6,20 +6,9 @@
 #include "pathutils.h"
 
 #include <QDir>
-#include <QFileInfo>
 #include <QSettings>
 
 namespace {
-
-// A missing folder can be cloned into only when its parent folder exists. Otherwise Locate folder is the only way
-// to fix the install.
-bool isFixable(const InstallTable::Install &install)
-{
-    if (install.state != InstallListModel::Invalid)
-        return false;
-
-    return !install.pathMissing || QFileInfo(install.path).absoluteDir().exists();
-}
 
 // The reason a folder was kept, as the user reads it. Removed has no reason, since nothing was kept.
 QString keptReason(InstallFolderJobs::RemoveResult result)
@@ -97,8 +86,8 @@ QVariant InstallListModel::data(const QModelIndex &index, int role) const
     case StepProgressRole: return install.stepProgress;
     case InstallableRole: return m_table->canInstall(index.row());
     case ProblemRole: return install.problem;
-    case RelocatableRole: return InstallTable::isRelocatable(install);
-    case FixableRole: return isFixable(install) && InstallTable::isRecent(index.row());
+    case PathMissingRole: return InstallTable::isPathMissing(install);
+    case FixableRole: return install.state == Invalid && InstallTable::isRecent(index.row());
     case AddableRole: return m_table->canAdd(index.row());
     }
 
@@ -120,7 +109,7 @@ QHash<int, QByteArray> InstallListModel::roleNames() const
         {StepProgressRole, "stepProgress"},
         {InstallableRole, "installable"},
         {ProblemRole, "problem"},
-        {RelocatableRole, "relocatable"},
+        {PathMissingRole, "pathMissing"},
         {FixableRole, "fixable"},
         {AddableRole, "addable"},
     };
@@ -286,53 +275,6 @@ void InstallListModel::finishUninstall(const QString &version, const QString &pa
     notifyStateChanged(row);
 }
 
-// Only a folder that FlaxHub created can be located: it must hold the marker that the clone wrote. Any other folder is
-// refused before a check runs, and the install keeps its old folder. The folder that passes is checked the same way as
-// at startup, on a worker thread. An install that passes is Installed again, and one that fails stays Invalid with the
-// reason for the new folder. A marked folder that is not a checkout of this engine is refused too, since Fix would clear it.
-void InstallListModel::relocate(const QString &version, const QString &path)
-{
-    const int row = m_table->rowFor(version);
-    if (row < 0 || !InstallTable::isRelocatable(m_table->at(row)))
-        return;
-
-    const QString folder = expandHome(path);
-    if (!InstallRules::isFullPath(folder)) {
-        emit errorOccurred(qtTrId("main.installlistmodel.locate_title"),
-                           qtTrId("main.installlistmodel.path_not_full").arg(path));
-        return;
-    }
-
-    if (!InstallRules::hasMarker(folder)) {
-        emit errorOccurred(qtTrId("main.installlistmodel.locate_title"),
-                           qtTrId("main.installlistmodel.locate_not_created_by_hub")
-                               .arg(version)
-                               .arg(collapseHome(folder)));
-        return;
-    }
-
-    m_table->setChecking(row);
-    notifyStateChanged(row);
-
-    m_jobs.check(version, folder, [this, version, folder](const QList<Failure> &failures) {
-        const int checked = m_table->rowFor(version);
-        if (checked < 0)
-            return;
-
-        if (InstallRules::needsClear(failures)) {
-            m_table->refuseLocation(checked, failures);
-            notifyStateChanged(checked);
-            emit errorOccurred(qtTrId("main.installlistmodel.locate_title"),
-                               qtTrId("main.installlistmodel.locate_incomplete")
-                                   .arg(version));
-            return;
-        }
-
-        m_table->relocate(checked, folder, failures);
-        notifyStateChanged(checked);
-    });
-}
-
 // All four checks run again, on a worker thread, since the folder may have changed since it was last checked. The
 // install is Checking until decideFix has the result.
 void InstallListModel::fix(const QString &version, bool clearConfirmed)
@@ -366,8 +308,9 @@ void InstallListModel::fix(const QString &version, bool clearConfirmed)
 }
 
 // Decides what a Fix does with the result of its check. Only the steps that the failed checks need run, in order:
-// clone, generate, build. The install becomes Installed only when finishInstall passes. A folder that has files but is
-// not a complete checkout is cleared only when clearConfirmed is set.
+// clone, generate, build. A missing folder needs the clone, which also creates its parent folders. The install becomes
+// Installed only when finishInstall passes. A folder that has files but is not a complete checkout is cleared only when
+// clearConfirmed is set.
 void InstallListModel::decideFix(const QString &version, const QList<Failure> &failures, bool clearConfirmed)
 {
     const int row = m_table->rowFor(version);
@@ -395,15 +338,6 @@ void InstallListModel::decideFix(const QString &version, const QList<Failure> &f
         emit errorOccurred(qtTrId("main.installlistmodel.fix_title"),
                            qtTrId("main.installlistmodel.fix_no_git")
                                .arg(version));
-        return;
-    }
-
-    // Nothing is changed when the fix is not allowed, and the problem text shows the current reasons.
-    if (!isFixable(install)) {
-        notifyStateChanged(row);
-        emit errorOccurred(qtTrId("main.installlistmodel.fix_title"),
-                           qtTrId("main.installlistmodel.fix_no_parent")
-                               .arg(collapseHome(install.path)));
         return;
     }
 

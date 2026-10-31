@@ -326,127 +326,117 @@
         <translation>Keep installing</translation>
     </message>
     <message id="main.installsview.state_cloning">
-        <location filename="../views/InstallsView.qml" line="29"/>
+        <location filename="../views/InstallsView.qml" line="25"/>
         <source></source>
         <translation>Cloning…</translation>
     </message>
     <message id="main.installsview.state_generating">
-        <location filename="../views/InstallsView.qml" line="30"/>
+        <location filename="../views/InstallsView.qml" line="26"/>
         <source></source>
         <translation>Generating…</translation>
     </message>
     <message id="main.installsview.state_building">
-        <location filename="../views/InstallsView.qml" line="31"/>
+        <location filename="../views/InstallsView.qml" line="27"/>
         <source></source>
         <translation>Building…</translation>
     </message>
     <message id="main.installsview.state_removing">
-        <location filename="../views/InstallsView.qml" line="32"/>
+        <location filename="../views/InstallsView.qml" line="28"/>
         <source></source>
         <translation>Removing…</translation>
     </message>
     <message id="main.installsview.state_checking">
-        <location filename="../views/InstallsView.qml" line="33"/>
+        <location filename="../views/InstallsView.qml" line="29"/>
         <source></source>
         <translation>Checking…</translation>
     </message>
     <message id="main.installsview.state_installed">
-        <location filename="../views/InstallsView.qml" line="34"/>
+        <location filename="../views/InstallsView.qml" line="30"/>
         <source></source>
         <translation>Installed</translation>
     </message>
     <message id="main.installsview.state_failed">
-        <location filename="../views/InstallsView.qml" line="35"/>
+        <location filename="../views/InstallsView.qml" line="31"/>
         <source></source>
         <translation>Failed</translation>
     </message>
     <message id="main.installsview.state_invalid">
-        <location filename="../views/InstallsView.qml" line="36"/>
+        <location filename="../views/InstallsView.qml" line="32"/>
         <source></source>
         <translation>Invalid</translation>
     </message>
     <message id="main.installsview.state_not_installed">
-        <location filename="../views/InstallsView.qml" line="37"/>
+        <location filename="../views/InstallsView.qml" line="33"/>
         <source></source>
         <translation>Not installed</translation>
     </message>
-    <message id="main.installsview.locate_title">
-        <location filename="../views/InstallsView.qml" line="82"/>
-        <source></source>
-        <translation>Locate engine folder</translation>
-    </message>
     <message id="main.installsview.title">
-        <location filename="../views/InstallsView.qml" line="107"/>
+        <location filename="../views/InstallsView.qml" line="91"/>
         <source></source>
         <translation>Installs</translation>
     </message>
     <message id="main.installsview.add_version">
-        <location filename="../views/InstallsView.qml" line="110"/>
+        <location filename="../views/InstallsView.qml" line="94"/>
         <source></source>
         <translation>Add version</translation>
     </message>
     <message id="main.installsview.busy_notice">
-        <location filename="../views/InstallsView.qml" line="120"/>
+        <location filename="../views/InstallsView.qml" line="104"/>
         <source></source>
         <translation>Another install is running. Install, Retry and Fix wait for it to finish.</translation>
     </message>
     <message id="main.installsview.engine_name">
-        <location filename="../views/InstallsView.qml" line="189"/>
+        <location filename="../views/InstallsView.qml" line="172"/>
         <source></source>
         <translation>FlaxEngine %1</translation>
     </message>
     <message id="main.installsview.default_badge">
-        <location filename="../views/InstallsView.qml" line="202"/>
+        <location filename="../views/InstallsView.qml" line="185"/>
         <source></source>
         <translation>Default</translation>
     </message>
     <message id="main.installsview.retry">
-        <location filename="../views/InstallsView.qml" line="221"/>
+        <location filename="../views/InstallsView.qml" line="204"/>
         <source></source>
         <translation>Retry</translation>
     </message>
     <message id="main.installsview.install">
-        <location filename="../views/InstallsView.qml" line="221"/>
+        <location filename="../views/InstallsView.qml" line="204"/>
         <source></source>
         <translation>Install</translation>
     </message>
     <message id="main.installsview.fix">
-        <location filename="../views/InstallsView.qml" line="235"/>
+        <location filename="../views/InstallsView.qml" line="218"/>
         <source></source>
         <translation>Fix</translation>
     </message>
-    <message id="main.installsview.locate">
-        <location filename="../views/InstallsView.qml" line="243"/>
-        <source></source>
-        <translation>Locate folder…</translation>
-    </message>
     <message id="main.installsview.set_default">
-        <location filename="../views/InstallsView.qml" line="254"/>
+        <location filename="../views/InstallsView.qml" line="227"/>
         <source></source>
         <translation>Set as default</translation>
     </message>
     <message id="main.installsview.remove_from_list">
-        <location filename="../views/InstallsView.qml" line="266"/>
+        <location filename="../views/InstallsView.qml" line="241"/>
         <source></source>
         <translation>Remove from list</translation>
     </message>
     <message id="main.installsview.uninstall">
-        <location filename="../views/InstallsView.qml" line="266"/>
+        <location filename="../views/InstallsView.qml" line="241"/>
         <source></source>
         <translation>Uninstall...</translation>
     </message>
     <message id="main.installsview.progress_label">
-        <location filename="../views/InstallsView.qml" line="281"/>
+        <location filename="../views/InstallsView.qml" line="256"/>
         <source></source>
         <translation>Progress of FlaxEngine %1</translation>
     </message>
     <message id="main.installsview.empty_title">
-        <location filename="../views/InstallsView.qml" line="326"/>
+        <location filename="../views/InstallsView.qml" line="301"/>
         <source></source>
         <translation>No engines installed</translation>
     </message>
     <message id="main.installsview.empty_detail">
-        <location filename="../views/InstallsView.qml" line="327"/>
+        <location filename="../views/InstallsView.qml" line="302"/>
         <source></source>
         <translation>Install a FlaxEngine version to open projects with it.</translation>
     </message>
@@ -669,121 +659,97 @@
         <translation>The file manager could not open %1.</translation>
     </message>
     <message id="main.installlistmodel.install_title">
-        <location filename="../src/installlistmodel.cpp" line="178"/>
+        <location filename="../src/installlistmodel.cpp" line="167"/>
         <source></source>
         <translation>Could not install engine</translation>
     </message>
     <message id="main.installlistmodel.install_busy">
-        <location filename="../src/installlistmodel.cpp" line="180"/>
+        <location filename="../src/installlistmodel.cpp" line="169"/>
         <source></source>
         <translation>Another install is running. Wait for it to finish, then install FlaxEngine %1.</translation>
     </message>
     <message id="main.installlistmodel.path_not_full">
-        <location filename="../src/installlistmodel.cpp" line="186"/>
-        <location filename="../src/installlistmodel.cpp" line="221"/>
-        <location filename="../src/installlistmodel.cpp" line="302"/>
+        <location filename="../src/installlistmodel.cpp" line="175"/>
+        <location filename="../src/installlistmodel.cpp" line="210"/>
         <source></source>
         <translation>Choose the folder by its full path. %1 is not a full path.</translation>
     </message>
     <message id="main.installlistmodel.install_unknown">
-        <location filename="../src/installlistmodel.cpp" line="192"/>
+        <location filename="../src/installlistmodel.cpp" line="181"/>
         <source></source>
         <translation>FlaxEngine %1 is not in the list of engines.</translation>
     </message>
     <message id="main.installlistmodel.install_not_idle">
-        <location filename="../src/installlistmodel.cpp" line="198"/>
+        <location filename="../src/installlistmodel.cpp" line="187"/>
         <source></source>
         <translation>FlaxEngine %1 cannot be installed right now. It is already installed or being worked on.</translation>
     </message>
     <message id="main.installlistmodel.install_too_old">
-        <location filename="../src/installlistmodel.cpp" line="202"/>
+        <location filename="../src/installlistmodel.cpp" line="191"/>
         <source></source>
         <translation>Only the %1 newest FlaxEngine versions can be installed. FlaxEngine %2 is older than those.</translation>
     </message>
     <message id="main.installlistmodel.install_folder_not_empty">
-        <location filename="../src/installlistmodel.cpp" line="225"/>
+        <location filename="../src/installlistmodel.cpp" line="214"/>
         <source></source>
         <translation>The folder %1 already has files in it. Choose a folder that is missing or empty.</translation>
     </message>
     <message id="main.installlistmodel.not_owned">
-        <location filename="../src/installlistmodel.cpp" line="28"/>
+        <location filename="../src/installlistmodel.cpp" line="17"/>
         <source></source>
         <translation>The folder was not made by FlaxHub and is not a complete FlaxEngine checkout, so it was not deleted.</translation>
     </message>
     <message id="main.installlistmodel.unsafe_path">
-        <location filename="../src/installlistmodel.cpp" line="29"/>
+        <location filename="../src/installlistmodel.cpp" line="18"/>
         <source></source>
         <translation>FlaxHub never deletes a link, a file, a relative path, a drive root, the home folder or a folder that holds it.</translation>
     </message>
     <message id="main.installlistmodel.delete_failed">
-        <location filename="../src/installlistmodel.cpp" line="30"/>
+        <location filename="../src/installlistmodel.cpp" line="19"/>
         <source></source>
         <translation>Some files in the folder could not be deleted.</translation>
     </message>
     <message id="main.installlistmodel.remove_title">
-        <location filename="../src/installlistmodel.cpp" line="279"/>
+        <location filename="../src/installlistmodel.cpp" line="268"/>
         <source></source>
         <translation>Could not remove engine</translation>
     </message>
     <message id="main.installlistmodel.remove_kept">
-        <location filename="../src/installlistmodel.cpp" line="280"/>
+        <location filename="../src/installlistmodel.cpp" line="269"/>
         <source></source>
         <translation>FlaxEngine %1 stays in the list. Its folder %2 was not deleted. %3</translation>
     </message>
-    <message id="main.installlistmodel.locate_title">
-        <location filename="../src/installlistmodel.cpp" line="301"/>
-        <location filename="../src/installlistmodel.cpp" line="307"/>
-        <location filename="../src/installlistmodel.cpp" line="325"/>
-        <source></source>
-        <translation>Could not locate folder</translation>
-    </message>
-    <message id="main.installlistmodel.locate_not_created_by_hub">
-        <location filename="../src/installlistmodel.cpp" line="308"/>
-        <source></source>
-        <translation>FlaxEngine %1 in %2 was not created by FlaxHub, so it cannot be located. Choose an engine folder that FlaxHub installed (it holds a .flaxhub-install file).</translation>
-    </message>
-    <message id="main.installlistmodel.locate_incomplete">
-        <location filename="../src/installlistmodel.cpp" line="326"/>
-        <source></source>
-        <translation>That folder was created by FlaxHub but is not a complete FlaxEngine %1 checkout. Choose the folder FlaxHub installed that engine into.</translation>
-    </message>
     <message id="main.installlistmodel.fix_title">
-        <location filename="../src/installlistmodel.cpp" line="346"/>
-        <location filename="../src/installlistmodel.cpp" line="355"/>
-        <location filename="../src/installlistmodel.cpp" line="387"/>
-        <location filename="../src/installlistmodel.cpp" line="395"/>
-        <location filename="../src/installlistmodel.cpp" line="404"/>
+        <location filename="../src/installlistmodel.cpp" line="288"/>
+        <location filename="../src/installlistmodel.cpp" line="297"/>
+        <location filename="../src/installlistmodel.cpp" line="330"/>
+        <location filename="../src/installlistmodel.cpp" line="338"/>
         <source></source>
         <translation>Could not fix engine</translation>
     </message>
     <message id="main.installlistmodel.fix_too_old">
-        <location filename="../src/installlistmodel.cpp" line="347"/>
+        <location filename="../src/installlistmodel.cpp" line="289"/>
         <source></source>
         <translation>Only the %1 newest FlaxEngine versions can be fixed. FlaxEngine %2 is older than those. Remove it from the list instead.</translation>
     </message>
     <message id="main.installlistmodel.fix_busy">
-        <location filename="../src/installlistmodel.cpp" line="356"/>
-        <location filename="../src/installlistmodel.cpp" line="388"/>
+        <location filename="../src/installlistmodel.cpp" line="298"/>
+        <location filename="../src/installlistmodel.cpp" line="331"/>
         <source></source>
         <translation>Another install is running. Wait for it to finish, then fix FlaxEngine %1 again.</translation>
     </message>
     <message id="main.installlistmodel.fix_no_git">
-        <location filename="../src/installlistmodel.cpp" line="396"/>
+        <location filename="../src/installlistmodel.cpp" line="339"/>
         <source></source>
         <translation>Git is not available, so the checkout cannot be checked. Install git and make sure it is on the PATH, then fix FlaxEngine %1 again.</translation>
     </message>
-    <message id="main.installlistmodel.fix_no_parent">
-        <location filename="../src/installlistmodel.cpp" line="405"/>
-        <source></source>
-        <translation>The folder %1 is missing and its parent folder does not exist, so the engine cannot be cloned there. Locate the folder instead.</translation>
-    </message>
     <message id="main.installlistmodel.save_title">
-        <location filename="../src/installlistmodel.cpp" line="494"/>
+        <location filename="../src/installlistmodel.cpp" line="428"/>
         <source></source>
         <translation>Could not save installs</translation>
     </message>
     <message id="main.installlistmodel.save_failed">
-        <location filename="../src/installlistmodel.cpp" line="495"/>
+        <location filename="../src/installlistmodel.cpp" line="429"/>
         <source></source>
         <translation>The install list could not be saved, so the engines may be missing the next time FlaxHub starts. Check that the settings file can be written.</translation>
     </message>

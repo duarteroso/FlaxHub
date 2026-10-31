@@ -33,7 +33,7 @@ public:
         bool logLineIsProgress = false;
         // The reasons an Invalid install failed its checks, one per line. Empty for every other state.
         QString problem;
-        // Set when an Invalid install's folder was not found. Only that case can be located again.
+        // Set when an Invalid install's folder was not found. Fix clones the folder again for that case.
         bool pathMissing = false;
     };
 
@@ -44,9 +44,9 @@ public:
     static bool isInstallable(InstallState state);
     // A running install is cloning, generating or building.
     static bool isRunning(InstallState state);
-    // Only an install whose folder was not found can be pointed at another one. Other failed checks have no missing
-    // folder to locate.
-    static bool isRelocatable(const Install &install);
+    // An Invalid install whose folder was not found. Fix clones the folder again, and Remove only takes the entry out of
+    // the list, since there is no folder to delete.
+    static bool isPathMissing(const Install &install);
     // Whether the row is among the newest versions. Only those can be installed or fixed.
     static bool isRecent(int row);
 
@@ -101,10 +101,6 @@ public:
     void applyCheckResult(int row, const QList<Failure> &failures);
     // The check after the last step, which also ends the log with the outcome.
     void applyInstallCheck(int row, const QList<Failure> &failures);
-    // A located folder that passed the marker check: the install moves there and takes the check's result.
-    void relocate(int row, const QString &path, const QList<Failure> &failures);
-    // A located folder that needs clearing is refused: the install keeps its folder and is Invalid with the reasons.
-    void refuseLocation(int row, const QList<Failure> &failures);
 
     // Adds a step's output to the log, and keeps the log under its cap.
     void appendOutput(int row, const QString &text);

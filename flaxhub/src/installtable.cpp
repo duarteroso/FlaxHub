@@ -22,7 +22,7 @@ bool InstallTable::isRunning(InstallState state)
         || state == InstallListModel::Building;
 }
 
-bool InstallTable::isRelocatable(const Install &install)
+bool InstallTable::isPathMissing(const Install &install)
 {
     return install.state == InstallListModel::Invalid && install.pathMissing;
 }
@@ -292,18 +292,6 @@ void InstallTable::applyInstallCheck(int row, const QList<Failure> &failures)
         install.log += "Done.\n";
     else
         install.log += "The install did not pass its checks:\n" + install.problem + '\n';
-}
-
-void InstallTable::relocate(int row, const QString &path, const QList<Failure> &failures)
-{
-    m_installs[row].path = path;
-    applyCheckResult(row, failures);
-}
-
-void InstallTable::refuseLocation(int row, const QList<Failure> &failures)
-{
-    applyCheckResult(row, failures);
-    m_installs[row].state = InstallListModel::Invalid;
 }
 
 // Git redraws its progress line with a carriage return, so that line is replaced by whatever comes after it instead

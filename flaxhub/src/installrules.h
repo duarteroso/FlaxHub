@@ -31,7 +31,7 @@ bool isSafeToRemove(const QString &path);
 // The marker the Hub writes into an engine folder once its clone has made the folder: a file named .flaxhub-install,
 // so the folder records that FlaxHub created it. git refuses to clone into a folder that already has files, so the
 // marker waits for the clone. A clone that was cut short has no marker, so Uninstall of a Failed entry keeps it unless
-// it is a complete checkout. An Invalid entry is deleted either way. Locate accepts a folder only when it has the marker.
+// it is a complete checkout. An Invalid entry is deleted either way.
 QString markerPath(const QString &path);
 // Writes the marker into the folder at path, which must exist. Returns false when it cannot be written.
 bool writeMarker(const QString &path);
