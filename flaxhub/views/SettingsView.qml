@@ -10,6 +10,9 @@ Rectangle {
 
     color: Theme.windowBg
 
+    // True while a folder picker from one of the location fields is shown.
+    readonly property bool dialogOpen: installsField.dialogOpen || projectsField.dialogOpen
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: Theme.spaceL
@@ -30,6 +33,8 @@ Rectangle {
             label: qsTrId("main.settingsview.install_folder")
 
             FolderField {
+                id: installsField
+
                 Layout.fillWidth: true
                 label: installsRow.label
                 path: root.prefs.installDirectory
@@ -44,6 +49,8 @@ Rectangle {
             label: qsTrId("main.settingsview.projects_folder")
 
             FolderField {
+                id: projectsField
+
                 Layout.fillWidth: true
                 label: projectsRow.label
                 path: root.prefs.projectsDirectory

@@ -16,6 +16,9 @@ RowLayout {
 
     signal chosen(string folder)
 
+    // True while the folder picker that Browse opens is shown, so the owner can keep the menu out of the way.
+    readonly property bool dialogOpen: folderDialog.visible
+
     spacing: Theme.spaceM
 
     HubTextField {

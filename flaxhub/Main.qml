@@ -31,8 +31,14 @@ ApplicationWindow {
 
     // The menu bar only emits signals. Quit and Close Window call close(), so onClosing still asks while work runs.
     // The sidebar index drives the StackLayout, so setting it switches the view and highlights the sidebar too.
+    // True while any dialog or folder picker is shown. The menu's view and dialog items wait for it.
+    readonly property bool dialogOpen: addInstallDialog.visible || installProgressDialog.visible || uninstallDialog.visible
+        || clearFolderDialog.visible || removeFolderDialog.visible || newProjectDialog.visible || quitDialog.visible
+        || noticeDialog.visible || projectsView.dialogOpen || settingsView.dialogOpen
+
     menuBar: AppMenuBar {
         projectCreating: projectModel.creating
+        dialogOpen: window.dialogOpen
 
         onAboutRequested: noticeDialog.show(qsTrId("main.menu.about_title"), qsTrId("main.menu.about_version").arg(Qt.application.version))
         onSettingsRequested: sidebar.currentIndex = sidebar.settingsIndex
@@ -177,6 +183,8 @@ ApplicationWindow {
             }
 
             SettingsView {
+                id: settingsView
+
                 prefs: AppSettings
             }
         }

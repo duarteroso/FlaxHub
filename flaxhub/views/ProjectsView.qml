@@ -22,6 +22,9 @@ Rectangle {
 
     color: Theme.windowBg
 
+    // True while the Add existing folder picker is shown.
+    readonly property bool dialogOpen: addFolderDialog.visible
+
     // Both groups count, so the empty state shows only when no project is listed.
     readonly property int projectCount: pinnedRows.count + otherRows.count
 

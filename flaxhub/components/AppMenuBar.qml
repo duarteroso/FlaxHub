@@ -11,6 +11,9 @@ MenuBar {
 
     // True while a project is created. New Project is unavailable meanwhile, as in its dialog.
     required property bool projectCreating
+    // True while any dialog or folder picker is open. The items that change the view or open a dialog are unavailable
+    // meanwhile, and so are their shortcuts. About, Quit and Help stay available.
+    required property bool dialogOpen
 
     signal aboutRequested()
     signal settingsRequested()
@@ -35,6 +38,7 @@ MenuBar {
             action: Action {
                 text: qsTrId("main.menu.settings")
                 shortcut: StandardKey.Preferences
+                enabled: !root.dialogOpen
                 onTriggered: root.settingsRequested()
             }
         }
@@ -57,7 +61,7 @@ MenuBar {
             action: Action {
                 text: qsTrId("main.menu.new_project")
                 shortcut: StandardKey.New
-                enabled: !root.projectCreating
+                enabled: !root.projectCreating && !root.dialogOpen
                 onTriggered: {
                     root.projectsRequested();
                     root.newProjectRequested();
@@ -69,6 +73,7 @@ MenuBar {
             action: Action {
                 text: qsTrId("main.menu.add_existing_project")
                 shortcut: StandardKey.Open
+                enabled: !root.dialogOpen
                 onTriggered: {
                     root.projectsRequested();
                     root.addExistingProjectRequested();
@@ -85,6 +90,7 @@ MenuBar {
             action: Action {
                 text: qsTrId("main.menu.add_install")
                 shortcut: "Shift+Ctrl+N"
+                enabled: !root.dialogOpen
                 onTriggered: {
                     root.installsRequested();
                     root.addInstallRequested();
@@ -100,6 +106,7 @@ MenuBar {
             action: Action {
                 text: qsTrId("main.menu.view_projects")
                 shortcut: "Ctrl+1"
+                enabled: !root.dialogOpen
                 onTriggered: root.projectsRequested()
             }
         }
@@ -108,6 +115,7 @@ MenuBar {
             action: Action {
                 text: qsTrId("main.menu.view_installs")
                 shortcut: "Ctrl+2"
+                enabled: !root.dialogOpen
                 onTriggered: root.installsRequested()
             }
         }
@@ -116,6 +124,7 @@ MenuBar {
             action: Action {
                 text: qsTrId("main.menu.view_settings")
                 shortcut: "Ctrl+3"
+                enabled: !root.dialogOpen
                 onTriggered: root.settingsRequested()
             }
         }
