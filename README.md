@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="logo/flax_hexplate.svg" width="160" alt="FlaxHub logo">
+</p>
+
 # FlaxHub
 
 FlaxHub is an unofficial desktop hub for [Flax Engine](https://flaxengine.com), in the style of Unity Hub. It is a
