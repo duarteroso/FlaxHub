@@ -4,9 +4,9 @@
 
 # FlaxHub
 
-FlaxHub is an unofficial desktop hub for [Flax Engine](https://flaxengine.com), in the style of Unity Hub. It is a
-Qt Quick app that manages engine installs and projects in one place, so you do not have to clone, build and launch
-the engine by hand.
+FlaxHub is an unofficial desktop hub for [Flax Engine](https://flaxengine.com). 
+It is a Qt Quick app that manages engine installs and projects in one place, so you do not have to clone, 
+build and launch the engine by hand.
 
 > **Status:** early development. Expect rough edges, and please report what you find.
 
