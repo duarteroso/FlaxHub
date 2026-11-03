@@ -57,23 +57,6 @@ The script uses `$HOME/Qt/6.12.0/gcc_64` when `QT_ROOT` is not set. The binary i
 To build the engine from inside FlaxHub, you also need the engine's Linux build dependencies. See the
 [engine's documentation](https://docs.flaxengine.com).
 
-### Windows
-
-> **Note**: FlaxEngine on Windows provides an offical hub for installing the engine and managing projects.
-It is recommended to use it on this platform!
-
-From a Visual Studio developer prompt (so MSVC and CMake are on the `PATH`):
-
-```
-set QT_ROOT=C:\Qt\6.12.0\msvc2022_64
-build-release.bat
-build\windows\bin\appFlaxHub.exe
-```
-
-The script runs `windeployqt`, so the Qt DLLs are copied next to the app. The folder `build\windows` can then be moved
-or zipped. The engine's build also needs Visual Studio with the workloads the
-[engine's documentation](https://docs.flaxengine.com) lists.
-
 ### macOS
 
 ```
@@ -84,6 +67,22 @@ open build/macos/appFlaxHub.app
 The script runs `macdeployqt`, so the Qt frameworks are bundled into the app. The app is not signed or notarized, so
 macOS may ask you to allow it in System Settings > Privacy & Security. The engine's build needs Xcode and its command
 line tools.
+
+### Windows
+
+> **Note**: FlaxEngine on Windows provides an offical hub for installing the engine and managing projects.
+It is recommended to use it on this platform!
+
+From a Powershell prompt (Qt6.12, MSVC and CMake need to be on the `PATH`):
+
+```
+build-release.bat
+build\windows\bin\appFlaxHub.exe
+```
+
+The script runs `windeployqt`, so the Qt DLLs are copied next to the app. The folder `build\windows` can then be moved
+or zipped. The engine's build also needs Visual Studio with the workloads the
+[engine's documentation](https://docs.flaxengine.com) lists.
 
 ## Development
 
