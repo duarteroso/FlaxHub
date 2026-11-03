@@ -35,10 +35,15 @@ Rectangle {
                 Layout.fillWidth: root.collapsed
             }
 
-            Text {
-                text: "⬡"
-                color: Theme.accent
-                font.pixelSize: Theme.fontHeading
+            Image {
+                source: Qt.resolvedUrl("../icons/flaxhub_logo.png")
+                sourceSize.width: Theme.fontHeading * 2
+                sourceSize.height: Theme.fontHeading * 2
+                Layout.preferredWidth: Theme.fontHeading + Theme.spaceXs
+                Layout.preferredHeight: Theme.fontHeading + Theme.spaceXs
+                fillMode: Image.PreserveAspectFit
+                smooth: true
+                mipmap: true
             }
 
             Text {

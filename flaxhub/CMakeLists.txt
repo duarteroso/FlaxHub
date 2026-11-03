@@ -71,6 +71,7 @@ qt_add_qml_module(appFlaxHub
         dialogs/NoticeDialog.qml
     RESOURCES
         icons/Logo_Title.png
+        icons/flaxhub_logo.png
         icons/joystick.svg
         icons/install_desktop.svg
         icons/open_in_new.svg
